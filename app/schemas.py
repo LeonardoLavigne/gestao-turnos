@@ -69,3 +69,27 @@ class RelatorioPeriodo(BaseModel):
     dias: list[RelatorioDia]
 
 
+class UsuarioBase(BaseModel):
+    nome: str
+    numero_funcionario: str
+
+
+class UsuarioCreate(UsuarioBase):
+    telegram_user_id: int
+
+
+class UsuarioUpdate(BaseModel):
+    nome: Optional[str] = None
+    numero_funcionario: Optional[str] = None
+
+
+class UsuarioRead(UsuarioBase):
+    id: int
+    telegram_user_id: int
+    criado_em: datetime
+    atualizado_em: datetime
+
+    class Config:
+        from_attributes = True
+
+

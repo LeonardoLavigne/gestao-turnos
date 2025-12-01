@@ -129,3 +129,64 @@ def gerar_relatorio_periodo(
     )
 
 
+def listar_turnos_recentes(db: Session, limit: int = 5) -> list[models.Turno]:
+    stmt = (
+        select(models.Turno)
+        .order_by(models.Turno.criado_em.desc())
+        .limit(limit)
+    )
+    return list(db.scalars(stmt).all())
+
+
+def delete_turno(db: Session, turno_id: int) -> bool:
+    turno = db.get(models.Turno, turno_id)
+    if not turno:
+        return False
+    
+    # Se tiver integração, tentar remover (opcional, pode falhar sem problemas)
+    # Aqui só deletamos do banco local.
+    # Se quisesse deletar do caldav, teria que chamar caldav_client.delete_evento(turno.integracao.event_uid)
+    # Mas o caldav_client atual não expõe delete. Deixaremos assim por enquanto.
+    
+    db.delete(turno)
+    db.commit()
+    return True
+
+
+# Funções CRUD para Usuario
+def get_usuario_by_telegram_id(db: Session, telegram_user_id: int) -> models.Usuario | None:
+    stmt = select(models.Usuario).where(
+        models.Usuario.telegram_user_id == telegram_user_id
+    )
+    return db.scalar(stmt)
+
+
+def criar_usuario(db: Session, payload: schemas.UsuarioCreate) -> models.Usuario:
+    usuario = models.Usuario(
+        telegram_user_id=payload.telegram_user_id,
+        nome=payload.nome,
+        numero_funcionario=payload.numero_funcionario,
+    )
+    db.add(usuario)
+    db.commit()
+    db.refresh(usuario)
+    return usuario
+
+
+def atualizar_usuario(
+    db: Session, telegram_user_id: int, payload: schemas.UsuarioUpdate
+) -> models.Usuario | None:
+    usuario = get_usuario_by_telegram_id(db, telegram_user_id)
+    if not usuario:
+        return None
+    
+    if payload.nome is not None:
+        usuario.nome = payload.nome
+    if payload.numero_funcionario is not None:
+        usuario.numero_funcionario = payload.numero_funcionario
+    
+    db.commit()
+    db.refresh(usuario)
+    return usuario
+
+

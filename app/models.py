@@ -93,3 +93,26 @@ class IntegracaoCalendario(Base):
     )
 
 
+class Usuario(Base):
+    __tablename__ = "usuarios"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
+    telegram_user_id: Mapped[int] = mapped_column(
+        Integer, unique=True, index=True, nullable=False
+    )
+    nome: Mapped[str] = mapped_column(String(100), nullable=False)
+    numero_funcionario: Mapped[str] = mapped_column(
+        String(50), unique=True, nullable=False, index=True
+    )
+    
+    criado_em: Mapped[datetime] = mapped_column(
+        DateTime, default=datetime.utcnow, nullable=False
+    )
+    atualizado_em: Mapped[datetime] = mapped_column(
+        DateTime,
+        default=datetime.utcnow,
+        onupdate=datetime.utcnow,
+        nullable=False,
+    )
+
+
