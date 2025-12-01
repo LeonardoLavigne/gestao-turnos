@@ -1,0 +1,17 @@
+services:
+  gestao-turnos:
+    build: .
+    container_name: gestao_turnos
+    restart: unless-stopped
+    env_file:
+      - .env
+    environment:
+      - APP_TIMEZONE=${APP_TIMEZONE:-America/Sao_Paulo}
+      - SQLITE_PATH=${SQLITE_PATH:-/app/data/gestao_turnos.db}
+    volumes:
+      - ./data:/app/data
+    ports:
+      - "8000:8000"
+
+
+
