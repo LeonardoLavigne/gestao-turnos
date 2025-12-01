@@ -1,6 +1,11 @@
 services:
   gestao-turnos:
-    build: .
+    build:
+      context: .
+      args:
+        # ✅ Passar UID/GID do usuário do host para evitar problemas de permissão
+        USER_ID: ${USER_ID:-1000}
+        GROUP_ID: ${GROUP_ID:-1000}
     container_name: gestao_turnos
     restart: unless-stopped
     env_file:
@@ -9,9 +14,10 @@ services:
       - APP_TIMEZONE=${APP_TIMEZONE:-America/Sao_Paulo}
       - SQLITE_PATH=${SQLITE_PATH:-/app/data/gestao_turnos.db}
     volumes:
+      # Bind mount para desenvolvimento (código e migrations)
       - ./data:/app/data
+      # ✅ IMPORTANTE: Para Alembic funcionar sem problemas de permissão
+      - ./app:/app/app:rw
+      - ./migrations:/app/migrations:rw
     ports:
       - "8000:8000"
-
-
-
