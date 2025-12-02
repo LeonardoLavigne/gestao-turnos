@@ -2,6 +2,7 @@ services:
   gestao-turnos:
     build:
       context: .
+      target: development # ✅ Usar stage de desenvolvimento
       args:
         # ✅ Passar UID/GID do usuário do host para evitar problemas de permissão
         USER_ID: ${USER_ID:-1000}
