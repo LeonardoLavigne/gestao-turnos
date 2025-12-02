@@ -1,4 +1,3 @@
-```python
 from __future__ import annotations
 
 from datetime import datetime, date, timedelta
@@ -1037,4 +1036,3 @@ def build_application() -> Application:
     
     app.add_handler(MessageHandler(filters.TEXT & (~filters.COMMAND), registrar_turno_msg))
     return app
-```
