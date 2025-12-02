@@ -56,13 +56,15 @@ def test_user_isolation_with_rls(db_session):
     # Preparar: Inserir dados para dois usuários diferentes
     # Usar BEGIN...COMMIT manual para garantir transação correta
     
-    # Inserir turno para User A (111)
+    # Inserir turno para User A (111) e capturar ID
     db_session.execute(text("BEGIN"))
     db_session.execute(text("SET LOCAL app.current_user_id = '111'"))
-    db_session.execute(text("""
+    result = db_session.execute(text("""
         INSERT INTO turnos (telegram_user_id, data_referencia, hora_inicio, hora_fim, duracao_minutos, criado_em, atualizado_em)
         VALUES (111, '2024-01-01', '08:00', '16:00', 480, NOW(), NOW())
+        RETURNING id
     """))
+    id_turno_a = result.scalar()
     db_session.execute(text("COMMIT"))
     
     # Inserir turno para User B (222)
@@ -88,7 +90,14 @@ def test_user_isolation_with_rls(db_session):
     db_session.execute(text("COMMIT"))
     assert result_b == 1, f"User B deveria ver 1 turno, viu {result_b}"
     
-    # Teste 3: User C (333) não deve ver nada
+    # Teste 3: User B tenta acessar DIRETAMENTE o ID do turno de A
+    db_session.execute(text("BEGIN"))
+    db_session.execute(text("SET LOCAL app.current_user_id = '222'"))
+    result_direct = db_session.execute(text(f"SELECT id FROM turnos WHERE id = {id_turno_a}")).first()
+    db_session.execute(text("COMMIT"))
+    assert result_direct is None, f"VIOLAÇÃO DE SEGURANÇA: User B conseguiu acessar turno {id_turno_a} de User A!"
+
+    # Teste 4: User C (333) não deve ver nada
     db_session.execute(text("BEGIN"))
     db_session.execute(text("SET LOCAL app.current_user_id = '333'"))
     result_c = db_session.execute(text("SELECT COUNT(*) FROM turnos")).scalar()
