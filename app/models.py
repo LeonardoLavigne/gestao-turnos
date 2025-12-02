@@ -11,7 +11,14 @@ class TipoTurno(Base):
     __tablename__ = "tipos_turno"
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
-    nome: Mapped[str] = mapped_column(String(50), unique=True, index=True)
+    
+    # ✅ Multi-tenancy: isolamento por usuário
+    telegram_user_id: Mapped[int] = mapped_column(
+        Integer, nullable=False, index=True,
+        doc="ID do usuário do Telegram (multi-tenancy)"
+    )
+    
+    nome: Mapped[str] = mapped_column(String(50), index=True)
     descricao: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
     cor_calendario: Mapped[Optional[str]] = mapped_column(String(20), nullable=True)
 
@@ -22,6 +29,12 @@ class Turno(Base):
     __tablename__ = "turnos"
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
+    
+    # ✅ Multi-tenancy: isolamento por usuário
+    telegram_user_id: Mapped[int] = mapped_column(
+        Integer, nullable=False, index=True,
+        doc="ID do usuário do Telegram (multi-tenancy)"
+    )
 
     data_referencia: Mapped[date] = mapped_column(Date, index=True)
     hora_inicio: Mapped[time] = mapped_column(Time)

@@ -58,8 +58,8 @@ def test_user_isolation_with_rls(db_session):
     
     # Inserir turno para User A
     db_session.execute(text("""
-        INSERT INTO turnos (telegram_user_id, data_referencia, hora_inicio, hora_fim, duracao_minutos)
-        VALUES (111, '2024-01-01', '08:00', '16:00', 480)
+        INSERT INTO turnos (telegram_user_id, data_referencia, hora_inicio, hora_fim, duracao_minutos, criado_em, atualizado_em)
+        VALUES (111, '2024-01-01', '08:00', '16:00', 480, NOW(), NOW())
     """))
     db_session.commit()
     
@@ -76,8 +76,8 @@ def test_user_isolation_with_rls(db_session):
     
     # Inserir turno para User B
     db_session.execute(text("""
-        INSERT INTO turnos (telegram_user_id, data_referencia, hora_inicio, hora_fim, duracao_minutos)
-        VALUES (222, '2024-01-02', '09:00', '17:00', 480)
+        INSERT INTO turnos (telegram_user_id, data_referencia, hora_inicio, hora_fim, duracao_minutos, criado_em, atualizado_em)
+        VALUES (222, '2024-01-02', '09:00', '17:00', 480, NOW(), NOW())
     """))
     db_session.commit()
     

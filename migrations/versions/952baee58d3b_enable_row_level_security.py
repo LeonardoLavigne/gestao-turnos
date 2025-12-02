@@ -1,8 +1,8 @@
 """enable row level security
 
-Revision ID: 4e3b71592071
-Revises: 92956f1a05ac
-Create Date: 2025-12-02 19:14:35.754395
+Revision ID: 952baee58d3b
+Revises: 3c68e15e6b50
+Create Date: 2025-12-02 19:37:26.161744
 
 """
 from typing import Sequence, Union
@@ -12,8 +12,8 @@ import sqlalchemy as sa
 
 
 # revision identifiers, used by Alembic.
-revision: str = '4e3b71592071'
-down_revision: Union[str, Sequence[str], None] = '92956f1a05ac'
+revision: str = '952baee58d3b'
+down_revision: Union[str, Sequence[str], None] = '3c68e15e6b50'
 branch_labels: Union[str, Sequence[str], None] = None
 depends_on: Union[str, Sequence[str], None] = None
 
