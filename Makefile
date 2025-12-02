@@ -99,3 +99,26 @@ check-permissions: ## Verificar permissões das pastas
 	@echo "📁 Verificando permissões..."
 	@ls -la migrations/ 2>/dev/null || echo "⚠️  Pasta migrations/ não existe"
 	@ls -la data/ 2>/dev/null || echo "⚠️  Pasta data/ não existe"
+
+# Comandos locais com uv (sem Docker)
+dev: ## Rodar app localmente com uv
+	uv run python -m app.run_all
+
+test: ## Rodar testes com uv
+	uv run pytest tests/ -v
+
+lint: ## Lint com ruff
+	uv run ruff check app/
+
+format: ## Format com ruff
+	uv run ruff format app/
+
+add: ## Adicionar dependência (uso: make add PKG=nome_do_pacote)
+	@if [ -z "$(PKG)" ]; then \
+		echo "❌ Erro: Use 'make add PKG=nome_do_pacote'"; \
+		exit 1; \
+	fi
+	uv add $(PKG)
+
+sync: ## Sincronizar ambiente virtual
+	uv sync
