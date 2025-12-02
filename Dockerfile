@@ -39,6 +39,7 @@ RUN groupadd -g ${GROUP_ID} appuser && \
 
 # Copiar código (será sobrescrito pelo bind mount, mas útil para cache)
 COPY app ./app
+COPY alembic.ini ./
 
 # Criar pasta data e ajustar permissões
 RUN mkdir -p ${APP_HOME}/data && \

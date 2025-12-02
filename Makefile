@@ -53,7 +53,7 @@ shell: ## Shell no container
 alembic-init: ## Inicializar Alembic (primeira vez)
 	@echo "🔧 Inicializando Alembic..."
 	@mkdir -p migrations
-	docker compose exec gestao-turnos alembic init migrations
+	docker compose exec gestao-turnos uv run alembic init migrations
 	@echo "✅ Alembic inicializado!"
 	@echo "⚠️  Edite migrations/env.py para configurar target_metadata"
 
@@ -63,24 +63,24 @@ alembic-migrate: ## Criar migration (uso: make alembic-migrate MSG='nome da migr
 		exit 1; \
 	fi
 	@echo "📝 Criando migration: $(MSG)..."
-	docker compose exec gestao-turnos alembic revision --autogenerate -m "$(MSG)"
+	docker compose exec gestao-turnos uv run alembic revision --autogenerate -m "$(MSG)"
 	@echo "✅ Migration criada! Revise o arquivo antes de aplicar."
 
 alembic-upgrade: ## Aplicar migrations
 	@echo "⬆️  Aplicando migrations..."
-	docker compose exec gestao-turnos alembic upgrade head
+	docker compose exec gestao-turnos uv run alembic upgrade head
 	@echo "✅ Migrations aplicadas!"
 
 alembic-downgrade: ## Rollback última migration
 	@echo "⬇️  Fazendo rollback..."
-	docker compose exec gestao-turnos alembic downgrade -1
+	docker compose exec gestao-turnos uv run alembic downgrade -1
 	@echo "✅ Rollback concluído!"
 
 alembic-history: ## Ver histórico de migrations
-	docker compose exec gestao-turnos alembic history
+	docker compose exec gestao-turnos uv run alembic history
 
 alembic-current: ## Ver migration atual
-	docker compose exec gestao-turnos alembic current
+	docker compose exec gestao-turnos uv run alembic current
 
 # Atalhos úteis
 rebuild: down build up ## Down + Build + Up
