@@ -9,14 +9,19 @@ ENV PYTHONUNBUFFERED=1 \
 
 WORKDIR ${APP_HOME}
 
+# ✅ Instalar uv
+COPY --from=ghcr.io/astral-sh/uv:latest /uv /usr/local/bin/uv
+
 # Instalar dependências do sistema
 RUN apt-get update && apt-get install -y --no-install-recommends \
     build-essential \
     && rm -rf /var/lib/apt/lists/*
 
-# Instalar dependências Python
-COPY requirements.txt .
-RUN pip install --no-cache-dir -r requirements.txt
+# ✅ Copiar arquivos de dependências
+COPY pyproject.toml uv.lock ./
+
+# ✅ Instalar dependências com uv
+RUN uv sync --frozen --no-dev
 
 # ==========================================
 # Stage 2: Development (Com Fix de Permissões)
@@ -42,7 +47,8 @@ USER appuser
 
 ENV SQLITE_PATH=${APP_HOME}/data/gestao_turnos.db
 
-CMD ["python", "-m", "app.run_all"]
+# ✅ Usar uv run para executar
+CMD ["uv", "run", "python", "-m", "app.run_all"]
 
 # ==========================================
 # Stage 3: Production (Limpo e Seguro)
@@ -66,13 +72,13 @@ RUN echo '#!/bin/bash\n\
     # Verificar se alembic.ini existe antes de tentar rodar migrations\n\
     if [ -f "alembic.ini" ]; then\n\
     echo "🔄 Aplicando migrations..."\n\
-    alembic upgrade head\n\
+    uv run alembic upgrade head\n\
     else\n\
     echo "⚠️  alembic.ini não encontrado, pulando migrations..."\n\
     fi\n\
     \n\
     echo "🚀 Iniciando aplicação..."\n\
-    exec python -m app.run_all' > /entrypoint.sh && \
+    exec uv run python -m app.run_all' > /entrypoint.sh && \
     chmod +x /entrypoint.sh
 
 USER appuser
