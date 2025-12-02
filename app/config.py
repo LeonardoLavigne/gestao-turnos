@@ -1,4 +1,5 @@
 from pydantic import BaseModel
+from typing import Optional
 from functools import lru_cache
 import os
 
@@ -9,7 +10,13 @@ class Settings(BaseModel):
 
     # DB
     # PostgreSQL (prioritário) ou SQLite (fallback)
-    database_url: str | None = os.getenv("DATABASE_URL", None)
+    database_url: Optional[str] = os.getenv("DATABASE_URL", None)
+    
+    # Stripe Configuration
+    stripe_api_key: str = os.getenv("STRIPE_API_KEY", "")
+    stripe_webhook_secret: str = os.getenv("STRIPE_WEBHOOK_SECRET", "")
+    stripe_price_id_pro: str = os.getenv("STRIPE_PRICE_ID_PRO", "")
+    base_url: str = os.getenv("BASE_URL", "http://localhost:8000")  # Para URLs de sucesso/cancelamento
     sqlite_path: str = os.getenv("SQLITE_PATH", "data/gestao_turnos.db")
 
     # Telegram

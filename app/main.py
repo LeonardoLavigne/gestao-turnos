@@ -6,13 +6,17 @@ from sqlalchemy.orm import Session
 
 from .database import Base, engine, get_db
 from . import crud, schemas, models
-from .infrastructure.middleware import RLSMiddleware
+from app.infrastructure.middleware import RLSMiddleware
+from app.api import webhook
 
 
 # ✅ Usar Alembic migrations ao invés de create_all
 # Base.metadata.create_all(bind=engine)
 
 app = FastAPI(title="Gestão de Turnos")
+
+# Registrar Webhooks (antes do middleware RLS para evitar bloqueio)
+app.include_router(webhook.router)
 
 # ✅ Registrar middleware RLS
 app.add_middleware(RLSMiddleware)

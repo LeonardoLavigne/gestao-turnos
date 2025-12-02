@@ -1,3 +1,4 @@
+```python
 from __future__ import annotations
 
 from datetime import datetime, date, timedelta
@@ -1026,8 +1027,9 @@ def build_application() -> Application:
     app.add_handler(CommandHandler("mes", relatorio_mes_cmd))
     app.add_handler(CommandHandler("remover", remover_cmd))
     app.add_handler(CommandHandler("menu", menu_cmd))
+    app.add_handler(CommandHandler("ajuda", ajuda))
+    app.add_handler(CommandHandler("assinar", assinar))  # ✅ Novo comando
     app.add_handler(CallbackQueryHandler(button_handler))
     app.add_handler(MessageHandler(filters.TEXT & (~filters.COMMAND), registrar_turno_msg))
     return app
-
-
+```

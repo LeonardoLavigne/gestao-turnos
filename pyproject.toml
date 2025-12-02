@@ -15,6 +15,7 @@ dependencies = [
     "python-telegram-bot>=22.5",
     "reportlab>=4.4.5",
     "sqlalchemy>=2.0.44",
+    "stripe>=14.0.1",
     "uvicorn[standard]>=0.38.0",
 ]
 
