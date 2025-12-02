@@ -6,11 +6,16 @@ from sqlalchemy.orm import Session
 
 from .database import Base, engine, get_db
 from . import crud, schemas, models
+from .infrastructure.middleware import RLSMiddleware
 
 
-Base.metadata.create_all(bind=engine)
+# ✅ Usar Alembic migrations ao invés de create_all
+# Base.metadata.create_all(bind=engine)
 
 app = FastAPI(title="Gestão de Turnos")
+
+# ✅ Registrar middleware RLS
+app.add_middleware(RLSMiddleware)
 
 
 @app.post("/turnos", response_model=schemas.TurnoRead)
