@@ -8,6 +8,8 @@ class Settings(BaseModel):
     timezone: str = os.getenv("APP_TIMEZONE", "America/Sao_Paulo")
 
     # DB
+    # PostgreSQL (prioritário) ou SQLite (fallback)
+    database_url: str | None = os.getenv("DATABASE_URL", None)
     sqlite_path: str = os.getenv("SQLITE_PATH", "data/gestao_turnos.db")
 
     # Telegram
