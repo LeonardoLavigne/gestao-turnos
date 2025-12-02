@@ -53,46 +53,58 @@ def test_user_isolation_with_rls(db_session):
     
     Valida que as políticas RLS isolam dados corretamente.
     """
-    # Configurar contexto para User A (telegram_user_id=111)
-    db_session.execute(text("SET LOCAL app.current_user_id = '111'"))
+    # Preparar: Inserir dados para dois usuários diferentes
+    # Usar BEGIN...COMMIT manual para garantir transação correta
     
-    # Inserir turno para User A
+    # Inserir turno para User A (111)
+    db_session.execute(text("BEGIN"))
+    db_session.execute(text("SET LOCAL app.current_user_id = '111'"))
     db_session.execute(text("""
         INSERT INTO turnos (telegram_user_id, data_referencia, hora_inicio, hora_fim, duracao_minutos, criado_em, atualizado_em)
         VALUES (111, '2024-01-01', '08:00', '16:00', 480, NOW(), NOW())
     """))
-    db_session.commit()
+    db_session.execute(text("COMMIT"))
     
-    # Consultar turnos (deve ver apenas do User A)
-    result_a = db_session.execute(text("SELECT COUNT(*) FROM turnos")).scalar()
-    assert result_a == 1, f"User A deveria ver 1 turno, viu {result_a}"
-    
-    # Mudar contexto para User B (telegram_user_id=222)
+    # Inserir turno para User B (222)
+    db_session.execute(text("BEGIN"))
     db_session.execute(text("SET LOCAL app.current_user_id = '222'"))
-    
-    # Consultar turnos (NÃO deve ver turnos de User A)
-    result_b = db_session.execute(text("SELECT COUNT(*) FROM turnos")).scalar()
-    assert result_b == 0, f"User B não deveria ver turnos de User A, viu {result_b}"
-    
-    # Inserir turno para User B
     db_session.execute(text("""
         INSERT INTO turnos (telegram_user_id, data_referencia, hora_inicio, hora_fim, duracao_minutos, criado_em, atualizado_em)
         VALUES (222, '2024-01-02', '09:00', '17:00', 480, NOW(), NOW())
     """))
-    db_session.commit()
+    db_session.execute(text("COMMIT"))
     
-    # User B deve ver apenas seu próprio turno
-    result_b2 = db_session.execute(text("SELECT COUNT(*) FROM turnos")).scalar()
-    assert result_b2 == 1, f"User B deveria ver 1 turno, viu {result_b2}"
-    
-    # Voltar para User A e verificar que ainda vê apenas 1
+    # Teste 1: User A deve ver apenas seu turno
+    db_session.execute(text("BEGIN"))
     db_session.execute(text("SET LOCAL app.current_user_id = '111'"))
-    result_a2 = db_session.execute(text("SELECT COUNT(*) FROM turnos")).scalar()
-    assert result_a2 == 1, f"User A deveria continuar vendo 1 turno, viu {result_a2}"
+    result_a = db_session.execute(text("SELECT COUNT(*) FROM turnos")).scalar()
+    db_session.execute(text("COMMIT"))
+    assert result_a == 1, f"User A deveria ver 1 turno, viu {result_a}"
     
-    # Cleanup
-    db_session.execute(text("DELETE FROM turnos WHERE telegram_user_id IN (111, 222)"))
-    db_session.commit()
+    # Teste 2: User B deve ver apenas seu turno (NÃO deve ver de A)
+    db_session.execute(text("BEGIN"))
+    db_session.execute(text("SET LOCAL app.current_user_id = '222'"))
+    result_b = db_session.execute(text("SELECT COUNT(*) FROM turnos")).scalar()
+    db_session.execute(text("COMMIT"))
+    assert result_b == 1, f"User B deveria ver 1 turno, viu {result_b}"
+    
+    # Teste 3: User C (333) não deve ver nada
+    db_session.execute(text("BEGIN"))
+    db_session.execute(text("SET LOCAL app.current_user_id = '333'"))
+    result_c = db_session.execute(text("SELECT COUNT(*) FROM turnos")).scalar()
+    db_session.execute(text("COMMIT"))
+    assert result_c == 0, f"User C não deveria ver nenhum turno, viu {result_c}"
+    
+    # Cleanup: Deletar o que foi criado (respeitando RLS)
+    db_session.execute(text("BEGIN"))
+    db_session.execute(text("SET LOCAL app.current_user_id = '111'"))
+    db_session.execute(text("DELETE FROM turnos"))
+    db_session.execute(text("COMMIT"))
+    
+    db_session.execute(text("BEGIN"))
+    db_session.execute(text("SET LOCAL app.current_user_id = '222'"))
+    db_session.execute(text("DELETE FROM turnos"))
+    db_session.execute(text("COMMIT"))
 
 
 def test_rls_policies_exist(db_session):
