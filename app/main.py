@@ -7,16 +7,22 @@ from sqlalchemy.orm import Session
 from .database import Base, engine, get_db
 from . import crud, schemas, models
 from app.infrastructure.middleware import RLSMiddleware
-from app.api import webhook
-
+from app.api import webhook, health
+from app.infrastructure.logger import setup_logging
 
 # ✅ Usar Alembic migrations ao invés de create_all
 # Base.metadata.create_all(bind=engine)
+
+# Configurar logs na inicialização
+setup_logging()
 
 app = FastAPI(title="Gestão de Turnos")
 
 # Registrar Webhooks (antes do middleware RLS para evitar bloqueio)
 app.include_router(webhook.router)
+
+# Registrar Health Check (público)
+app.include_router(health.router)
 
 # ✅ Registrar middleware RLS
 app.add_middleware(RLSMiddleware)

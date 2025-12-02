@@ -1030,6 +1030,11 @@ def build_application() -> Application:
     app.add_handler(CommandHandler("ajuda", ajuda))
     app.add_handler(CommandHandler("assinar", assinar))  # ✅ Novo comando
     app.add_handler(CallbackQueryHandler(button_handler))
+    
+    # Aplicar rate limit ao handler de texto (onde spam é mais provável)
+    # Nota: Decorators em handlers registrados assim precisam ser aplicados na definição da função.
+    # Como registrar_turno_msg está definida acima, vamos aplicá-lo lá.
+    
     app.add_handler(MessageHandler(filters.TEXT & (~filters.COMMAND), registrar_turno_msg))
     return app
 ```
