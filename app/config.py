@@ -1,54 +1,48 @@
-from pydantic import BaseModel
-from typing import Optional
+from pydantic_settings import BaseSettings, SettingsConfigDict
+from pydantic import Field, field_validator
+from typing import Optional, List
 from functools import lru_cache
 import os
 
+class Settings(BaseSettings):
+    model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8", extra="ignore")
 
-class Settings(BaseModel):
     app_name: str = "Gestão de Turnos"
-    timezone: str = os.getenv("APP_TIMEZONE", "America/Sao_Paulo")
+    timezone: str = Field(default="America/Sao_Paulo", validation_alias="APP_TIMEZONE")
 
     # DB
-    # PostgreSQL (prioritário) ou SQLite (fallback)
-    database_url: Optional[str] = os.getenv("DATABASE_URL", None)
+    database_url: Optional[str] = None
+    sqlite_path: str = "data/gestao_turnos.db"
     
     # Stripe Configuration
-    stripe_api_key: str = os.getenv("STRIPE_API_KEY", "")
-    stripe_webhook_secret: str = os.getenv("STRIPE_WEBHOOK_SECRET", "")
-    stripe_price_id_pro: str = os.getenv("STRIPE_PRICE_ID_PRO", "")
-    base_url: str = os.getenv("BASE_URL", "http://localhost:8000")  # Para URLs de sucesso/cancelamento
-    sqlite_path: str = os.getenv("SQLITE_PATH", "data/gestao_turnos.db")
+    stripe_api_key: str = ""
+    stripe_webhook_secret: str = ""
+    stripe_price_id_pro: str = ""
+    base_url: str = "http://localhost:8000"
 
     # Telegram
-    telegram_bot_token: str = os.getenv("TELEGRAM_BOT_TOKEN", "")
-    telegram_allowed_users: list[int] = []
+    telegram_bot_token: str = ""
+    telegram_allowed_users: List[int] = []
 
     # CalDAV / Disroot
-    caldav_url: str = os.getenv("CALDAV_URL", "")
-    caldav_username: str = os.getenv("CALDAV_USERNAME", "")
-    caldav_password: str = os.getenv("CALDAV_PASSWORD", "")
-    caldav_calendar_path: str = os.getenv("CALDAV_CALENDAR_PATH", "")
+    caldav_url: str = ""
+    caldav_username: str = ""
+    caldav_password: str = ""
+    caldav_calendar_path: str = ""
 
+    @field_validator("telegram_allowed_users", mode="before")
     @classmethod
-    def from_env(cls) -> "Settings":
-        allowed_users_raw = os.getenv("TELEGRAM_ALLOWED_USERS", "")
-        allowed_users: list[int] = []
-        for part in allowed_users_raw.split(","):
-            part = part.strip()
-            if not part:
-                continue
-            try:
-                allowed_users.append(int(part))
-            except ValueError:
-                continue
-
-        base = cls()
-        base.telegram_allowed_users = allowed_users
-        return base
-
+    def parse_allowed_users(cls, v):
+        if isinstance(v, str):
+            if not v.strip():
+                return []
+            return [int(x.strip()) for x in v.split(",") if x.strip()]
+        if isinstance(v, int):
+            return [v]
+        return v
 
 @lru_cache(maxsize=1)
 def get_settings() -> Settings:
-    return Settings.from_env()
+    return Settings()
 
 

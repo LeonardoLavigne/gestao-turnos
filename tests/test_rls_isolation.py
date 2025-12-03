@@ -63,6 +63,10 @@ def test_user_isolation_with_rls(db_session):
     
     # Teste 1: User A deve ver apenas seu turno
     db_session.execute(text("BEGIN"))
+    # Debug user
+    user = db_session.execute(text("SELECT current_user")).scalar()
+    print(f"DEBUG: Current User: {user}")
+    
     db_session.execute(text("SET LOCAL app.current_user_id = '111'"))
     result_a = db_session.execute(text("SELECT COUNT(*) FROM turnos")).scalar()
     db_session.execute(text("COMMIT"))
