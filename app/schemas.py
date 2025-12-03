@@ -1,7 +1,7 @@
 from datetime import date, time, datetime
 from typing import Optional, Literal
 
-from pydantic import BaseModel, field_validator
+from pydantic import BaseModel, ConfigDict, field_validator
 
 
 class TipoTurnoBase(BaseModel):
@@ -16,9 +16,7 @@ class TipoTurnoCreate(TipoTurnoBase):
 
 class TipoTurnoRead(TipoTurnoBase):
     id: int
-
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class TurnoBase(BaseModel):
@@ -51,9 +49,7 @@ class TurnoRead(BaseModel):
     descricao_opcional: Optional[str] = None
     criado_em: datetime
     atualizado_em: datetime
-
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class RelatorioDia(BaseModel):
@@ -88,8 +84,6 @@ class UsuarioRead(UsuarioBase):
     telegram_user_id: int
     criado_em: datetime
     atualizado_em: datetime
-
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 

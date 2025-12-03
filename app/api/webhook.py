@@ -1,7 +1,7 @@
 import stripe
 from fastapi import APIRouter, Request, Header, HTTPException, Depends
 from sqlalchemy.orm import Session
-from datetime import datetime
+from datetime import datetime, UTC
 
 from app.config import get_settings
 from app.database import get_db
@@ -64,8 +64,8 @@ async def handle_checkout_completed(session, db: Session):
             stripe_subscription_id=stripe_subscription_id,
             status="active",
             plano="pro",
-            criado_em=datetime.utcnow(),
-            atualizado_em=datetime.utcnow()
+            criado_em=datetime.now(UTC),
+            atualizado_em=datetime.now(UTC)
         )
         db.add(assinatura)
     else:
@@ -73,7 +73,7 @@ async def handle_checkout_completed(session, db: Session):
         assinatura.stripe_subscription_id = stripe_subscription_id
         assinatura.status = "active"
         assinatura.plano = "pro"
-        assinatura.atualizado_em = datetime.utcnow()
+        assinatura.atualizado_em = datetime.now(UTC)
     
     db.commit()
     print(f"Assinatura ativada para user {telegram_user_id}")
@@ -92,7 +92,7 @@ async def handle_subscription_updated(subscription, db: Session):
         assinatura.status = status
         if current_period_end:
             assinatura.data_fim = datetime.fromtimestamp(current_period_end)
-        assinatura.atualizado_em = datetime.utcnow()
+        assinatura.atualizado_em = datetime.now(UTC)
         db.commit()
         print(f"Assinatura {stripe_subscription_id} atualizada para {status}")
 
@@ -107,6 +107,6 @@ async def handle_subscription_deleted(subscription, db: Session):
     if assinatura:
         assinatura.status = "canceled"
         assinatura.plano = "free"
-        assinatura.atualizado_em = datetime.utcnow()
+        assinatura.atualizado_em = datetime.now(UTC)
         db.commit()
         print(f"Assinatura {stripe_subscription_id} cancelada")
