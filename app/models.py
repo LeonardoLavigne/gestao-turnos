@@ -1,7 +1,7 @@
 from datetime import datetime, date, time
 from typing import Optional
 
-from sqlalchemy import Integer, String, Date, Time, DateTime, ForeignKey
+from sqlalchemy import Integer, BigInteger, String, Date, Time, DateTime, ForeignKey
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from .database import Base
@@ -14,7 +14,7 @@ class TipoTurno(Base):
     
     # ✅ Multi-tenancy: isolamento por usuário
     telegram_user_id: Mapped[int] = mapped_column(
-        Integer, nullable=False, index=True,
+        BigInteger, nullable=False, index=True,
         doc="ID do usuário do Telegram (multi-tenancy)"
     )
     
@@ -32,7 +32,7 @@ class Turno(Base):
     
     # ✅ Multi-tenancy: isolamento por usuário
     telegram_user_id: Mapped[int] = mapped_column(
-        Integer, nullable=False, index=True,
+        BigInteger, nullable=False, index=True,
         doc="ID do usuário do Telegram (multi-tenancy)"
     )
 
@@ -111,7 +111,7 @@ class Usuario(Base):
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
     telegram_user_id: Mapped[int] = mapped_column(
-        Integer, unique=True, index=True, nullable=False
+        BigInteger, unique=True, index=True, nullable=False
     )
     nome: Mapped[str] = mapped_column(String(100), nullable=False)
     numero_funcionario: Mapped[str] = mapped_column(
@@ -136,7 +136,7 @@ class Assinatura(Base):
     
     # ✅ Multi-tenancy: isolamento por usuário
     telegram_user_id: Mapped[int] = mapped_column(
-        Integer, unique=True, index=True, nullable=False,
+        BigInteger, unique=True, index=True, nullable=False,
         doc="ID do usuário do Telegram (dono da assinatura)"
     )
     
