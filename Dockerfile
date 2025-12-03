@@ -41,6 +41,10 @@ RUN groupadd -g ${GROUP_ID} appuser && \
 COPY app ./app
 COPY alembic.ini ./
 
+# Copiar e configurar entrypoint
+COPY entrypoint.sh /entrypoint.sh
+RUN chmod +x /entrypoint.sh
+
 # Criar pasta data e ajustar permissões
 RUN mkdir -p ${APP_HOME}/data && \
     chown -R appuser:appuser ${APP_HOME}
@@ -49,8 +53,8 @@ USER appuser
 
 ENV SQLITE_PATH=${APP_HOME}/data/gestao_turnos.db
 
-# ✅ Usar uv run para executar
-CMD ["uv", "run", "python", "-m", "app.run_all"]
+# ✅ Usar entrypoint para aplicar migrations automaticamente
+ENTRYPOINT ["/entrypoint.sh"]
 
 # ==========================================
 # Stage 3: Production (Limpo e Seguro)
