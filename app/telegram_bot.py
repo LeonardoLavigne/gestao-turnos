@@ -20,9 +20,58 @@ from telegram.ext import (
 )
 from telegram import InlineKeyboardButton, InlineKeyboardMarkup
 
-from .config import get_settings
+from app.config import get_settings
+from app.services.stripe_service import StripeService
+from app.infrastructure.subscription_middleware import check_subscription
+from app.database import SessionLocal
+from collections import defaultdict
+import time
 
+# Rate Limit: 5 mensagens por minuto por usuário
+RATE_LIMIT_MSG = 5
+RATE_LIMIT_WINDOW = 60
+user_message_timestamps = defaultdict(list)
 
+def rate_limit(func):
+    """Decorator para limitar taxa de requisições."""
+    async def wrapper(update: Update, context: ContextTypes.DEFAULT_TYPE, *args, **kwargs):
+        user_id = update.effective_user.id
+        now = time.time()
+        
+        # Limpar timestamps antigos
+        user_message_timestamps[user_id] = [t for t in user_message_timestamps[user_id] if now - t < RATE_LIMIT_WINDOW]
+        
+        if len(user_message_timestamps[user_id]) >= RATE_LIMIT_MSG:
+            await update.message.reply_text("⚠️ **Muitas mensagens!** Aguarde um pouco.")
+            return
+
+        user_message_timestamps[user_id].append(now)
+        return await func(update, context, *args, **kwargs)
+    return wrapper
+
+def subscription_required(func):
+    """Decorator para exigir assinatura ativa."""
+    async def wrapper(update: Update, context: ContextTypes.DEFAULT_TYPE, *args, **kwargs):
+        user_id = update.effective_user.id
+        
+        # Permitir comandos básicos sem assinatura
+        if update.message and update.message.text and update.message.text.startswith(('/start', '/help', '/assinar')):
+            return await func(update, context, *args, **kwargs)
+
+        with SessionLocal() as db:
+            if not check_subscription(user_id, db):
+                await update.message.reply_text(
+                    "🔒 **Funcionalidade Exclusiva para Assinantes**\n\n"
+                    "Você precisa de uma assinatura ativa para usar este recurso.\n"
+                    "Use /assinar para fazer o upgrade.",
+                    parse_mode="Markdown"
+                )
+                return
+        
+        return await func(update, context, *args, **kwargs)
+    return wrapper
+
+# Logger configuration
 LINHA_REGEX = re.compile(
     r"^(?:dia\s+(?P<data>\d{1,2}[/-]\d{1,2}[/-]\d{4})\s*[-–—:]?\s*)?"
     r"(?P<tipo>[^\s\-–—:]+)\s*(?:[-–—:]\s*)?"
@@ -104,6 +153,39 @@ async def _post_turno_api(
         )
         resp.raise_for_status()
         return resp.json()
+
+
+async def ajuda(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    """Envia mensagem de ajuda."""
+    await update.message.reply_text(
+        "ℹ️ **Ajuda - Gestão de Turnos**\n\n"
+        "Comandos disponíveis:\n"
+        "/start - Iniciar cadastro\n"
+        "/assinar - Assinar Plano Pro\n"
+        "/mes - Relatório do mês atual\n"
+        "/semana - Relatório da semana atual\n"
+        "/remover - Remover turnos recentes\n"
+        "/menu - Menu interativo\n\n"
+        "Para registrar um turno, envie:\n"
+        "`<local> <inicio> as <fim>`\n"
+        "Ex: `Hospital 07:00 as 19:00`",
+        parse_mode="Markdown"
+    )
+
+async def assinar(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    """Gera link de checkout para assinatura Pro."""
+    user = update.effective_user
+    try:
+        checkout_url = StripeService.create_checkout_session(user.id)
+        await update.message.reply_text(
+            f"🚀 **Faça o upgrade para o Plano Pro!**\n\n"
+            f"Clique no link abaixo para assinar:\n{checkout_url}\n\n"
+            f"Após o pagamento, sua assinatura será ativada automaticamente.",
+            parse_mode="Markdown"
+        )
+    except Exception as e:
+        logging.error(f"Erro ao gerar checkout: {e}")
+        await update.message.reply_text("Erro ao gerar link de pagamento. Tente novamente mais tarde.")
 
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
@@ -238,6 +320,8 @@ async def cancelar_onboarding(update: Update, context: ContextTypes.DEFAULT_TYPE
     return ConversationHandler.END
 
 
+@rate_limit
+@subscription_required
 async def registrar_turno_msg(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     if not update.message or not update.message.text:
         return
@@ -1026,8 +1110,15 @@ def build_application() -> Application:
     app.add_handler(CommandHandler("mes", relatorio_mes_cmd))
     app.add_handler(CommandHandler("remover", remover_cmd))
     app.add_handler(CommandHandler("menu", menu_cmd))
+    app.add_handler(CommandHandler("ajuda", ajuda))
+    app.add_handler(CommandHandler("assinar", assinar))  # ✅ Novo comando
+    app.add_handler(CommandHandler("ajuda", ajuda))
+    app.add_handler(CommandHandler("assinar", assinar))  # ✅ Novo comando
     app.add_handler(CallbackQueryHandler(button_handler))
+    
+    # Aplicar rate limit ao handler de texto (onde spam é mais provável)
+    # Nota: Decorators em handlers registrados assim precisam ser aplicados na definição da função.
+    # Como registrar_turno_msg está definida acima, vamos aplicá-lo lá.
+    
     app.add_handler(MessageHandler(filters.TEXT & (~filters.COMMAND), registrar_turno_msg))
     return app
-
-

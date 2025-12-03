@@ -1,4 +1,22 @@
 services:
+  postgres:
+    image: postgres:15-alpine
+    container_name: gestao_turnos_db
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-gestao_turnos}
+      POSTGRES_USER: ${POSTGRES_USER:-postgres}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+    healthcheck:
+      test: [ "CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-postgres} -d ${POSTGRES_DB:-gestao_turnos}" ]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
   gestao-turnos:
     build:
       context: .
@@ -9,11 +27,15 @@ services:
         GROUP_ID: ${GROUP_ID:-1000}
     container_name: gestao_turnos
     restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
     env_file:
       - .env
     environment:
       - APP_TIMEZONE=${APP_TIMEZONE:-America/Sao_Paulo}
       - SQLITE_PATH=${SQLITE_PATH:-/app/data/gestao_turnos.db}
+      - DATABASE_URL=${DATABASE_URL:-postgresql+psycopg://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-postgres}@postgres:5432/${POSTGRES_DB:-gestao_turnos}}
     volumes:
       # Bind mount para desenvolvimento (código e migrations)
       - ./data:/app/data
@@ -22,3 +44,6 @@ services:
       - ./migrations:/app/migrations:rw
     ports:
       - "8000:8000"
+
+volumes:
+  postgres_data:

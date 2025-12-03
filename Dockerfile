@@ -15,6 +15,7 @@ COPY --from=ghcr.io/astral-sh/uv:latest /uv /usr/local/bin/uv
 # Instalar dependências do sistema
 RUN apt-get update && apt-get install -y --no-install-recommends \
     build-essential \
+    libpq-dev \
     && rm -rf /var/lib/apt/lists/*
 
 # ✅ Copiar arquivos de dependências
@@ -38,6 +39,7 @@ RUN groupadd -g ${GROUP_ID} appuser && \
 
 # Copiar código (será sobrescrito pelo bind mount, mas útil para cache)
 COPY app ./app
+COPY alembic.ini ./
 
 # Criar pasta data e ajustar permissões
 RUN mkdir -p ${APP_HOME}/data && \
