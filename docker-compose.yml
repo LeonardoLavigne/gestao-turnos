@@ -3,14 +3,16 @@ services:
     image: postgres:15-alpine
     container_name: gestao_turnos_db
     restart: unless-stopped
+    networks:
+      - app-network
     environment:
       POSTGRES_DB: ${POSTGRES_DB:-gestao_turnos}
       POSTGRES_USER: ${POSTGRES_USER:-postgres}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
     volumes:
       - postgres_data:/var/lib/postgresql/data
-    ports:
-      - "5432:5432"
+    # ports:
+    #   - "5432:5432"  # 🔒 Descomente apenas se precisar acessar o banco de fora do Docker
     healthcheck:
       test: [ "CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-postgres} -d ${POSTGRES_DB:-gestao_turnos}" ]
       interval: 5s
@@ -34,7 +36,6 @@ services:
       - .env
     environment:
       - APP_TIMEZONE=${APP_TIMEZONE:-America/Sao_Paulo}
-      - SQLITE_PATH=${SQLITE_PATH:-/app/data/gestao_turnos.db}
       - DATABASE_URL=${DATABASE_URL:-postgresql+psycopg://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-postgres}@postgres:5432/${POSTGRES_DB:-gestao_turnos}}
     volumes:
       # Bind mount para desenvolvimento (código e migrations)
@@ -44,6 +45,13 @@ services:
       - ./migrations:/app/migrations:rw
     ports:
       - "8000:8000"
+    networks:
+      - app-network
 
 volumes:
   postgres_data:
+
+
+networks:
+  app-network:
+    driver: bridge

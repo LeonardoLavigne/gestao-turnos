@@ -1,6 +1,8 @@
 # Makefile para gestão de turnos
 
-.PHONY: help build up down restart logs shell alembic-init alembic-migrate alembic-upgrade alembic-downgrade alembic-history
+.PHONY: help build up down restart logs shell alembic-init alembic-migrate \
+        alembic-upgrade alembic-downgrade alembic-history alembic-current \
+        rebuild fresh check-permissions dev test lint format add sync
 
 # ✅ Detectar UID/GID automaticamente
 export USER_ID := $(shell id -u)

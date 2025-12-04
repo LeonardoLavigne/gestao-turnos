@@ -16,6 +16,7 @@ COPY --from=ghcr.io/astral-sh/uv:latest /uv /usr/local/bin/uv
 RUN apt-get update && apt-get install -y --no-install-recommends \
     build-essential \
     libpq-dev \
+    postgresql-client \
     && rm -rf /var/lib/apt/lists/*
 
 # ✅ Copiar arquivos de dependências
@@ -50,8 +51,6 @@ RUN mkdir -p ${APP_HOME}/data && \
     chown -R appuser:appuser ${APP_HOME}
 
 USER appuser
-
-ENV SQLITE_PATH=${APP_HOME}/data/gestao_turnos.db
 
 # ✅ Usar entrypoint para aplicar migrations automaticamente
 ENTRYPOINT ["/entrypoint.sh"]

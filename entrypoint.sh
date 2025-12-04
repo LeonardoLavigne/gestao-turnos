@@ -1,8 +1,15 @@
 #!/bin/bash
 set -e
 
+
 echo "🔄 Aguardando PostgreSQL estar pronto..."
-sleep 2
+# Aguardar PostgreSQL com pg_isready para maior confiabilidade
+until pg_isready -h postgres -U postgres -d gestao_turnos > /dev/null 2>&1; do
+    echo "⏳ PostgreSQL ainda não está pronto, aguardando..."
+    sleep 1
+done
+echo "✅ PostgreSQL está pronto!"
+
 
 # Aplicar migrations automaticamente
 if [ -f "alembic.ini" ]; then
