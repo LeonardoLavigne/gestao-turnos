@@ -24,6 +24,7 @@ def upgrade() -> None:
     op.execute('DROP POLICY IF EXISTS turnos_isolation ON turnos')
     op.execute('DROP POLICY IF EXISTS tipos_turno_isolation ON tipos_turno')
     op.execute('DROP POLICY IF EXISTS assinaturas_isolation ON assinaturas')
+    op.execute('DROP POLICY IF EXISTS integracao_calendario_isolation ON integracao_calendario')
     
     # ### Step 2: Alter column types to BigInteger ###
     op.alter_column('assinaturas', 'telegram_user_id',
@@ -63,6 +64,16 @@ def upgrade() -> None:
         CREATE POLICY assinaturas_isolation ON assinaturas
         USING (telegram_user_id = CAST(current_setting('app.current_user_id', TRUE) AS BIGINT))
     """)
+    
+    op.execute("""
+        CREATE POLICY integracao_calendario_isolation ON integracao_calendario
+        USING (
+            turno_id IN (
+                SELECT id FROM turnos 
+                WHERE telegram_user_id = CAST(current_setting('app.current_user_id', TRUE) AS BIGINT)
+            )
+        )
+    """)
 
 
 def downgrade() -> None:
@@ -71,6 +82,7 @@ def downgrade() -> None:
     op.execute('DROP POLICY IF EXISTS turnos_isolation ON turnos')
     op.execute('DROP POLICY IF EXISTS tipos_turno_isolation ON tipos_turno')
     op.execute('DROP POLICY IF EXISTS assinaturas_isolation ON assinaturas')
+    op.execute('DROP POLICY IF EXISTS integracao_calendario_isolation ON integracao_calendario')
     
     # ### Step 2: Revert column types to INTEGER ###
     op.alter_column('usuarios', 'telegram_user_id',
@@ -109,4 +121,14 @@ def downgrade() -> None:
     op.execute("""
         CREATE POLICY assinaturas_isolation ON assinaturas
         USING (telegram_user_id = CAST(current_setting('app.current_user_id', TRUE) AS INTEGER))
+    """)
+    
+    op.execute("""
+        CREATE POLICY integracao_calendario_isolation ON integracao_calendario
+        USING (
+            turno_id IN (
+                SELECT id FROM turnos 
+                WHERE telegram_user_id = CAST(current_setting('app.current_user_id', TRUE) AS INTEGER)
+            )
+        )
     """)
