@@ -41,7 +41,7 @@ async def test_subscription_lifecycle():
     stripe_subscription_id = "sub_lifecycle_456"
     
     # Usar sessão de superuser para todo o teste (webhooks são processos de sistema)
-    superuser_url = "postgresql+psycopg://postgres:postgres@localhost:5432/gestao_turnos"
+    superuser_url = "postgresql+psycopg://postgres:postgres@postgres:5432/gestao_turnos"
     engine = create_engine(superuser_url)
     Session = sessionmaker(bind=engine)
     session = Session()

@@ -32,73 +32,85 @@ def test_rls_enabled_on_tables(db_session):
     assert tables.get('tipos_turno') == True, "RLS não habilitado em tipos_turno"
 
 
-def test_user_isolation_with_rls(db_session):
+def test_user_isolation_with_rls(db_session_rls):
     """
     Teste: Usuário A não vê dados de Usuário B.
     
     Valida que as políticas RLS isolam dados corretamente.
+    Usa role não-superuser (test_rls_user) que respeita políticas RLS.
     """
-    # Preparar: Inserir dados para dois usuários diferentes
-    # Usar BEGIN...COMMIT manual para garantir transação correta
+    db = db_session_rls
     
-    # Inserir turno para User A (111) e capturar ID
-    db_session.execute(text("BEGIN"))
-    db_session.execute(text("SET LOCAL app.current_user_id = '111'"))
-    result = db_session.execute(text("""
+    # Inserir turno para User A (111) com identificador único
+    db.execute(text("BEGIN"))
+    db.execute(text("SET LOCAL app.current_user_id = '111'"))
+    result = db.execute(text("""
         INSERT INTO turnos (telegram_user_id, data_referencia, hora_inicio, hora_fim, duracao_minutos, criado_em, atualizado_em)
-        VALUES (111, '2024-01-01', '08:00', '16:00', 480, NOW(), NOW())
+        VALUES (111, '2024-12-01', '08:00', '16:00', 480, NOW(), NOW())
         RETURNING id
     """))
     id_turno_a = result.scalar()
-    db_session.execute(text("COMMIT"))
+    db.execute(text("COMMIT"))
     
-    # Inserir turno para User B (222)
-    db_session.execute(text("BEGIN"))
-    db_session.execute(text("SET LOCAL app.current_user_id = '222'"))
-    db_session.execute(text("""
+    # Inserir turno para User B (222) com identificador único
+    db.execute(text("BEGIN"))
+    db.execute(text("SET LOCAL app.current_user_id = '222'"))
+    result = db.execute(text("""
         INSERT INTO turnos (telegram_user_id, data_referencia, hora_inicio, hora_fim, duracao_minutos, criado_em, atualizado_em)
-        VALUES (222, '2024-01-02', '09:00', '17:00', 480, NOW(), NOW())
+        VALUES (222, '2024-12-02', '09:00', '17:00', 480, NOW(), NOW())
+        RETURNING id
     """))
-    db_session.execute(text("COMMIT"))
+    id_turno_b = result.scalar()
+    db.execute(text("COMMIT"))
     
-    # Teste 1: User A deve ver apenas seu turno
-    db_session.execute(text("BEGIN"))
-    db_session.execute(text("SET LOCAL app.current_user_id = '111'"))
-    result_a = db_session.execute(text("SELECT COUNT(*) FROM turnos")).scalar()
-    db_session.execute(text("COMMIT"))
-    assert result_a == 1, f"User A deveria ver 1 turno, viu {result_a}"
+    # Teste 1: User A consegue ver seu próprio turno
+    db.execute(text("BEGIN"))
+    db.execute(text("SET LOCAL app.current_user_id = '111'"))
+    result_a = db.execute(text(f"SELECT id FROM turnos WHERE id = {id_turno_a}")).first()
+    db.execute(text("COMMIT"))
+    assert result_a is not None, f"User A deveria ver seu próprio turno {id_turno_a}"
     
-    # Teste 2: User B deve ver apenas seu turno (NÃO deve ver de A)
-    db_session.execute(text("BEGIN"))
-    db_session.execute(text("SET LOCAL app.current_user_id = '222'"))
-    result_b = db_session.execute(text("SELECT COUNT(*) FROM turnos")).scalar()
-    db_session.execute(text("COMMIT"))
-    assert result_b == 1, f"User B deveria ver 1 turno, viu {result_b}"
+    # Teste 2: User A NÃO consegue ver turno de B (CRÍTICO para RLS)
+    db.execute(text("BEGIN"))
+    db.execute(text("SET LOCAL app.current_user_id = '111'"))
+    result_a_ve_b = db.execute(text(f"SELECT id FROM turnos WHERE id = {id_turno_b}")).first()
+    db.execute(text("COMMIT"))
+    assert result_a_ve_b is None, f"VIOLAÇÃO DE SEGURANÇA: User A conseguiu ver turno {id_turno_b} de User B!"
     
-    # Teste 3: User B tenta acessar DIRETAMENTE o ID do turno de A
-    db_session.execute(text("BEGIN"))
-    db_session.execute(text("SET LOCAL app.current_user_id = '222'"))
-    result_direct = db_session.execute(text(f"SELECT id FROM turnos WHERE id = {id_turno_a}")).first()
-    db_session.execute(text("COMMIT"))
-    assert result_direct is None, f"VIOLAÇÃO DE SEGURANÇA: User B conseguiu acessar turno {id_turno_a} de User A!"
+    # Teste 3: User B consegue ver seu próprio turno
+    db.execute(text("BEGIN"))
+    db.execute(text("SET LOCAL app.current_user_id = '222'"))
+    result_b = db.execute(text(f"SELECT id FROM turnos WHERE id = {id_turno_b}")).first()
+    db.execute(text("COMMIT"))
+    assert result_b is not None, f"User B deveria ver seu próprio turno {id_turno_b}"
+    
+    # Teste 4: User B NÃO consegue ver turno de A (CRÍTICO para RLS)
+    db.execute(text("BEGIN"))
+    db.execute(text("SET LOCAL app.current_user_id = '222'"))
+    result_b_ve_a = db.execute(text(f"SELECT id FROM turnos WHERE id = {id_turno_a}")).first()
+    db.execute(text("COMMIT"))
+    assert result_b_ve_a is None, f"VIOLAÇÃO DE SEGURANÇA: User B conseguiu ver turno {id_turno_a} de User A!"
+    
+    # Teste 5: User C (333) não vê NENHUM dos dois turnos
+    db.execute(text("BEGIN"))
+    db.execute(text("SET LOCAL app.current_user_id = '333'"))
+    result_c_ve_a = db.execute(text(f"SELECT id FROM turnos WHERE id = {id_turno_a}")).first()
+    result_c_ve_b = db.execute(text(f"SELECT id FROM turnos WHERE id = {id_turno_b}")).first()
+    db.execute(text("COMMIT"))
+    assert result_c_ve_a is None, f"VIOLAÇÃO: User C viu turno {id_turno_a} de User A!"
+    assert result_c_ve_b is None, f"VIOLAÇÃO: User C viu turno {id_turno_b} de User B!"
+    
+    # Cleanup: Cada user só pode deletar seus próprios dados (respeitando RLS)
+    db.execute(text("BEGIN"))
+    db.execute(text("SET LOCAL app.current_user_id = '111'"))
+    db.execute(text(f"DELETE FROM turnos WHERE id = {id_turno_a}"))
+    db.execute(text("COMMIT"))
+    
+    db.execute(text("BEGIN"))
+    db.execute(text("SET LOCAL app.current_user_id = '222'"))
+    db.execute(text(f"DELETE FROM turnos WHERE id = {id_turno_b}"))
+    db.execute(text("COMMIT"))
 
-    # Teste 4: User C (333) não deve ver nada
-    db_session.execute(text("BEGIN"))
-    db_session.execute(text("SET LOCAL app.current_user_id = '333'"))
-    result_c = db_session.execute(text("SELECT COUNT(*) FROM turnos")).scalar()
-    db_session.execute(text("COMMIT"))
-    assert result_c == 0, f"User C não deveria ver nenhum turno, viu {result_c}"
-    
-    # Cleanup: Deletar o que foi criado (respeitando RLS)
-    db_session.execute(text("BEGIN"))
-    db_session.execute(text("SET LOCAL app.current_user_id = '111'"))
-    db_session.execute(text("DELETE FROM turnos"))
-    db_session.execute(text("COMMIT"))
-    
-    db_session.execute(text("BEGIN"))
-    db_session.execute(text("SET LOCAL app.current_user_id = '222'"))
-    db_session.execute(text("DELETE FROM turnos"))
-    db_session.execute(text("COMMIT"))
 
 
 def test_rls_policies_exist(db_session):

@@ -43,6 +43,7 @@ services:
       # ✅ IMPORTANTE: Para Alembic funcionar sem problemas de permissão
       - ./app:/app/app:rw
       - ./migrations:/app/migrations:rw
+      - ./tests:/app/tests:rw
     ports:
       - "8000:8000"
     networks:
