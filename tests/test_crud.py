@@ -75,6 +75,83 @@ class TestNomeTipo:
         assert resultado == "Plantão"
 
 
+class TestCriarTurno:
+    """Testes para criar_turno."""
+    
+    def test_criar_turno_simples(self, db_session_rls):
+        """Criar turno básico sem tipo."""
+        db = db_session_rls
+        
+        db.execute(text("BEGIN"))
+        db.execute(text("SET LOCAL app.current_user_id = '999'"))
+        
+        payload = schemas.TurnoCreate(
+            data_referencia=date(2024, 6, 15),
+            hora_inicio=time(8, 0),
+            hora_fim=time(16, 0),
+        )
+        
+        turno = crud.criar_turno(db, payload)
+        
+        assert turno.id is not None
+        assert turno.telegram_user_id == 999
+        assert turno.data_referencia == date(2024, 6, 15)
+        assert turno.hora_inicio == time(8, 0)
+        assert turno.hora_fim == time(16, 0)
+        assert turno.duracao_minutos == 480
+        
+        # Cleanup - nova transação após commit do criar_turno
+        db.execute(text("BEGIN"))
+        db.execute(text("SET LOCAL app.current_user_id = '999'"))
+        db.execute(text(f"DELETE FROM turnos WHERE id = {turno.id}"))
+        db.execute(text("COMMIT"))
+    
+    def test_criar_turno_com_tipo_livre(self, db_session_rls):
+        """Criar turno com tipo que não existe no banco (tipo_livre)."""
+        db = db_session_rls
+        
+        db.execute(text("BEGIN"))
+        db.execute(text("SET LOCAL app.current_user_id = '999'"))
+        
+        payload = schemas.TurnoCreate(
+            data_referencia=date(2024, 6, 16),
+            hora_inicio=time(9, 0),
+            hora_fim=time(17, 0),
+            tipo="TipoNaoExiste",
+        )
+        
+        turno = crud.criar_turno(db, payload)
+        
+        assert turno.tipo_livre == "TipoNaoExiste"
+        assert turno.tipo is None
+        assert turno.telegram_user_id == 999
+        
+        # Cleanup - nova transação após commit do criar_turno
+        db.execute(text("BEGIN"))
+        db.execute(text("SET LOCAL app.current_user_id = '999'"))
+        db.execute(text(f"DELETE FROM turnos WHERE id = {turno.id}"))
+        db.execute(text("COMMIT"))
+    
+    def test_criar_turno_sem_user_id_erro(self, db_session_rls):
+        """Criar turno sem current_user_id setado deve dar erro."""
+        db = db_session_rls
+        
+        # Não seta current_user_id
+        db.execute(text("BEGIN"))
+        
+        payload = schemas.TurnoCreate(
+            data_referencia=date(2024, 6, 17),
+            hora_inicio=time(8, 0),
+            hora_fim=time(16, 0),
+        )
+        
+        import pytest
+        with pytest.raises(ValueError, match="telegram_user_id não definido"):
+            crud.criar_turno(db, payload)
+        
+        db.execute(text("ROLLBACK"))
+
+
 class TestGerarRelatorioPeriodo:
     """Testes para gerar_relatorio_periodo."""
     

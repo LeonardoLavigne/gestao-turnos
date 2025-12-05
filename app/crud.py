@@ -21,6 +21,14 @@ def calcular_duracao_minutos(
 
 
 def criar_turno(db: Session, payload: schemas.TurnoCreate) -> models.Turno:
+    # Obter telegram_user_id da sessão PostgreSQL (setado via SET LOCAL app.current_user_id)
+    result = db.execute(select(func.current_setting('app.current_user_id', True)))
+    current_user_id = result.scalar()
+    if not current_user_id:
+        raise ValueError("telegram_user_id não definido na sessão (SET LOCAL app.current_user_id)")
+    
+    telegram_user_id = int(current_user_id)
+    
     duracao = calcular_duracao_minutos(
         payload.data_referencia, payload.hora_inicio, payload.hora_fim
     )
@@ -36,6 +44,7 @@ def criar_turno(db: Session, payload: schemas.TurnoCreate) -> models.Turno:
             tipo_livre = payload.tipo
 
     turno = models.Turno(
+        telegram_user_id=telegram_user_id,
         data_referencia=payload.data_referencia,
         hora_inicio=payload.hora_inicio,
         hora_fim=payload.hora_fim,
@@ -66,8 +75,10 @@ def criar_turno(db: Session, payload: schemas.TurnoCreate) -> models.Turno:
         # não quebra o fluxo principal se a integração falhar
         pass
 
+    # Expunge antes do commit para preservar os dados em memória
+    # e evitar lazy loading que falharia por RLS (SET LOCAL é perdido após commit)
+    db.expunge(turno)
     db.commit()
-    db.refresh(turno)
     return turno
 
 
