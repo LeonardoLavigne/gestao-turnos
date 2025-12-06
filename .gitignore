@@ -77,3 +77,6 @@ dmypy.json
 
 # Alembic (se tiver arquivos gerados automaticamente que não devem ir, mas geralmente migrations vão)
 # migrations/versions/*.pyc
+
+# Análise de codebase (documento local)
+ANALISE_CODEBASE.md

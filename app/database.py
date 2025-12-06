@@ -1,5 +1,8 @@
-from sqlalchemy import create_engine
-from sqlalchemy.orm import sessionmaker, DeclarativeBase
+from typing import Generator
+
+from fastapi import Request
+from sqlalchemy import create_engine, text
+from sqlalchemy.orm import sessionmaker, DeclarativeBase, Session
 from pathlib import Path
 
 from .config import get_settings
@@ -52,16 +55,34 @@ def _create_engine():
     return create_engine(database_url, **engine_kwargs)
 
 
+def _is_postgresql() -> bool:
+    """Verifica se está usando PostgreSQL."""
+    return _get_database_url().startswith("postgresql")
+
+
 # ✅ Criar engine com configuração apropriada
 engine = _create_engine()
 
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
 
-def get_db():
-    """Dependency para FastAPI"""
+def get_db(request: Request = None) -> Generator[Session, None, None]:
+    """
+    Dependency para FastAPI que fornece sessão do banco de dados.
+    
+    Se request.state.telegram_user_id estiver definido (via RLSMiddleware),
+    configura SET LOCAL app.current_user_id para RLS funcionar corretamente.
+    """
     db = SessionLocal()
     try:
+        # Configurar RLS se telegram_user_id estiver disponível
+        if request is not None and _is_postgresql():
+            user_id = getattr(request.state, "telegram_user_id", None)
+            if user_id is not None:
+                db.execute(
+                    text("SET LOCAL app.current_user_id = :user_id"),
+                    {"user_id": user_id}
+                )
         yield db
     finally:
         db.close()

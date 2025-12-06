@@ -51,6 +51,25 @@ class TurnoRead(BaseModel):
     atualizado_em: datetime
     model_config = ConfigDict(from_attributes=True)
 
+    @classmethod
+    def from_model(cls, turno) -> "TurnoRead":
+        """
+        Factory method para converter modelo SQLAlchemy para schema Pydantic.
+        Elimina duplicação de código nos endpoints.
+        """
+        tipo_nome = turno.tipo.nome if turno.tipo is not None else turno.tipo_livre
+        return cls(
+            id=turno.id,
+            data_referencia=turno.data_referencia,
+            hora_inicio=turno.hora_inicio,
+            hora_fim=turno.hora_fim,
+            duracao_minutos=turno.duracao_minutos,
+            tipo=tipo_nome,
+            descricao_opcional=turno.descricao_opcional,
+            criado_em=turno.criado_em,
+            atualizado_em=turno.atualizado_em,
+        )
+
 
 class RelatorioDia(BaseModel):
     data: date

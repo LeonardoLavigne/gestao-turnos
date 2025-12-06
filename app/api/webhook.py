@@ -1,3 +1,7 @@
+"""
+Stripe webhook handlers for subscription management.
+"""
+import logging
 import stripe
 from fastapi import APIRouter, Request, Header, HTTPException, Depends
 from sqlalchemy.orm import Session
@@ -6,13 +10,19 @@ from datetime import datetime, UTC
 from app.config import get_settings
 from app.database import get_db
 from app.models import Assinatura
-from app.services.stripe_service import StripeService
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter()
 settings = get_settings()
 
-@router.post("/webhook/stripe")
-async def stripe_webhook(request: Request, stripe_signature: str = Header(None), db: Session = Depends(get_db)):
+
+@router.post("/webhook/stripe", tags=["Webhooks"])
+async def stripe_webhook(
+    request: Request,
+    stripe_signature: str = Header(None),
+    db: Session = Depends(get_db),
+):
     """
     Recebe eventos do Stripe e atualiza o status da assinatura.
     """
@@ -22,25 +32,31 @@ async def stripe_webhook(request: Request, stripe_signature: str = Header(None),
         event = stripe.Webhook.construct_event(
             payload, stripe_signature, settings.stripe_webhook_secret
         )
-    except ValueError as e:
+    except ValueError:
+        logger.warning("Stripe webhook: Invalid payload received")
         raise HTTPException(status_code=400, detail="Invalid payload")
-    except stripe.error.SignatureVerificationError as e:
+    except stripe.error.SignatureVerificationError:
+        logger.warning("Stripe webhook: Invalid signature")
         raise HTTPException(status_code=400, detail="Invalid signature")
 
     # Processar eventos
-    if event['type'] == 'checkout.session.completed':
+    event_type = event['type']
+    logger.info(f"Processing Stripe event: {event_type}")
+    
+    if event_type == 'checkout.session.completed':
         session = event['data']['object']
         await handle_checkout_completed(session, db)
     
-    elif event['type'] == 'customer.subscription.updated':
+    elif event_type == 'customer.subscription.updated':
         subscription = event['data']['object']
         await handle_subscription_updated(subscription, db)
         
-    elif event['type'] == 'customer.subscription.deleted':
+    elif event_type == 'customer.subscription.deleted':
         subscription = event['data']['object']
         await handle_subscription_deleted(subscription, db)
 
     return {"status": "success"}
+
 
 async def handle_checkout_completed(session, db: Session):
     """
@@ -51,11 +67,13 @@ async def handle_checkout_completed(session, db: Session):
     stripe_subscription_id = session.get('subscription')
     
     if not telegram_user_id:
-        print("Webhook Error: telegram_user_id not found in session")
+        logger.error("Webhook Error: telegram_user_id not found in checkout session")
         return
 
     # Buscar assinatura existente
-    assinatura = db.query(Assinatura).filter(Assinatura.telegram_user_id == int(telegram_user_id)).first()
+    assinatura = db.query(Assinatura).filter(
+        Assinatura.telegram_user_id == int(telegram_user_id)
+    ).first()
     
     if not assinatura:
         assinatura = Assinatura(
@@ -68,15 +86,23 @@ async def handle_checkout_completed(session, db: Session):
             atualizado_em=datetime.now(UTC)
         )
         db.add(assinatura)
+        logger.info(
+            "Nova assinatura criada",
+            extra={"telegram_user_id": telegram_user_id, "plano": "pro"}
+        )
     else:
         assinatura.stripe_customer_id = stripe_customer_id
         assinatura.stripe_subscription_id = stripe_subscription_id
         assinatura.status = "active"
         assinatura.plano = "pro"
         assinatura.atualizado_em = datetime.now(UTC)
+        logger.info(
+            "Assinatura atualizada para ativa",
+            extra={"telegram_user_id": telegram_user_id, "plano": "pro"}
+        )
     
     db.commit()
-    print(f"Assinatura ativada para user {telegram_user_id}")
+
 
 async def handle_subscription_updated(subscription, db: Session):
     """
@@ -86,7 +112,9 @@ async def handle_subscription_updated(subscription, db: Session):
     status = subscription.get('status')
     current_period_end = subscription.get('current_period_end')
     
-    assinatura = db.query(Assinatura).filter(Assinatura.stripe_subscription_id == stripe_subscription_id).first()
+    assinatura = db.query(Assinatura).filter(
+        Assinatura.stripe_subscription_id == stripe_subscription_id
+    ).first()
     
     if assinatura:
         assinatura.status = status
@@ -94,7 +122,11 @@ async def handle_subscription_updated(subscription, db: Session):
             assinatura.data_fim = datetime.fromtimestamp(current_period_end)
         assinatura.atualizado_em = datetime.now(UTC)
         db.commit()
-        print(f"Assinatura {stripe_subscription_id} atualizada para {status}")
+        logger.info(
+            "Status de assinatura atualizado",
+            extra={"stripe_subscription_id": stripe_subscription_id, "status": status}
+        )
+
 
 async def handle_subscription_deleted(subscription, db: Session):
     """
@@ -102,11 +134,16 @@ async def handle_subscription_deleted(subscription, db: Session):
     """
     stripe_subscription_id = subscription.get('id')
     
-    assinatura = db.query(Assinatura).filter(Assinatura.stripe_subscription_id == stripe_subscription_id).first()
+    assinatura = db.query(Assinatura).filter(
+        Assinatura.stripe_subscription_id == stripe_subscription_id
+    ).first()
     
     if assinatura:
         assinatura.status = "canceled"
         assinatura.plano = "free"
         assinatura.atualizado_em = datetime.now(UTC)
         db.commit()
-        print(f"Assinatura {stripe_subscription_id} cancelada")
+        logger.info(
+            "Assinatura cancelada",
+            extra={"stripe_subscription_id": stripe_subscription_id}
+        )

@@ -1,9 +1,17 @@
+"""
+Stripe service for managing subscriptions and checkout sessions.
+"""
+import logging
 import stripe
 from typing import Optional
+
 from app.config import get_settings
+
+logger = logging.getLogger(__name__)
 
 settings = get_settings()
 stripe.api_key = settings.stripe_api_key
+
 
 class StripeService:
     @staticmethod
@@ -13,10 +21,6 @@ class StripeService:
         Retorna a URL de checkout.
         """
         try:
-            # Buscar ou criar customer (simplificado: cria novo ou busca por metadados se implementado)
-            # Idealmente, buscaríamos no banco local primeiro.
-            # Aqui vamos assumir que o fluxo cria a sessão e o webhook vincula.
-            
             checkout_session = stripe.checkout.Session.create(
                 payment_method_types=['card'],
                 line_items=[
@@ -36,8 +40,11 @@ class StripeService:
             )
             return checkout_session.url
         except Exception as e:
-            print(f"Erro ao criar checkout session: {e}")
-            raise e
+            logger.error(
+                "Erro ao criar checkout session",
+                extra={"telegram_user_id": telegram_user_id, "error": str(e)}
+            )
+            raise
 
     @staticmethod
     def get_portal_url(stripe_customer_id: str) -> str:
@@ -51,5 +58,8 @@ class StripeService:
             )
             return session.url
         except Exception as e:
-            print(f"Erro ao criar portal session: {e}")
-            raise e
+            logger.error(
+                "Erro ao criar portal session",
+                extra={"stripe_customer_id": stripe_customer_id, "error": str(e)}
+            )
+            raise
