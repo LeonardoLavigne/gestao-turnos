@@ -80,8 +80,8 @@ def get_db(request: Request = None) -> Generator[Session, None, None]:
             user_id = getattr(request.state, "telegram_user_id", None)
             if user_id is not None:
                 db.execute(
-                    text("SET LOCAL app.current_user_id = :user_id"),
-                    {"user_id": user_id}
+                    text("SELECT set_config('app.current_user_id', :user_id, true)"),
+                    {"user_id": str(user_id)}
                 )
         yield db
     finally:
