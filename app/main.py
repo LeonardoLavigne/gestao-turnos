@@ -15,7 +15,7 @@ from .database import Base, engine, get_db
 from . import crud, schemas, models
 from .reports import gerar_pdf_relatorio
 from app.infrastructure.middleware import RLSMiddleware
-from app.api import webhook, health
+from app.api import webhook, health, pages
 from app.infrastructure.logger import setup_logging
 
 # Configurar logs na inicialização
@@ -32,6 +32,7 @@ app.include_router(webhook.router)
 
 # Registrar Health Check (público)
 app.include_router(health.router)
+app.include_router(pages.router)
 
 # ✅ Registrar middleware RLS
 app.add_middleware(RLSMiddleware)

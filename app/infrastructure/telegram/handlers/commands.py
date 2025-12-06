@@ -49,7 +49,8 @@ async def assinar_command(update: Update, context: ContextTypes.DEFAULT_TYPE) ->
         checkout_url = StripeService.create_checkout_session(user.id)
         await update.message.reply_text(
             f"🚀 **Faça o upgrade para o Plano Pro!**\n\n"
-            f"Clique no link abaixo para assinar:\n{checkout_url}\n\n"
+            f"Clique no link abaixo para assinar:\n[Assinar Agora]({checkout_url})\n\n"
+            f"Ou copie o link:\n`{checkout_url}`\n\n"
             f"Após o pagamento, sua assinatura será ativada automaticamente.",
             parse_mode="Markdown"
         )
