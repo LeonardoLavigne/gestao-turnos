@@ -9,7 +9,7 @@ from functools import wraps
 from telegram import Update
 from telegram.ext import ContextTypes
 
-from app.database import SessionLocal
+from app.database import AsyncSessionLocal
 from app.infrastructure.subscription_middleware import check_subscription
 
 logger = logging.getLogger(__name__)
@@ -64,8 +64,8 @@ def subscription_required(func):
             if text.startswith(('/start', '/help', '/assinar', '/ajuda')):
                 return await func(update, context, *args, **kwargs)
 
-        with SessionLocal() as db:
-            if not check_subscription(user_id, db):
+        async with AsyncSessionLocal() as db:
+            if not await check_subscription(user_id, db):
                 await update.message.reply_text(
                     "🔒 **Funcionalidade Exclusiva para Assinantes**\n\n"
                     "Você precisa de uma assinatura ativa para usar este recurso.\n"

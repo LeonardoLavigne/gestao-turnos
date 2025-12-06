@@ -1,8 +1,8 @@
 from datetime import datetime, date, time, timedelta
-from typing import Iterable
+from typing import Iterable, Sequence
 
 from sqlalchemy import select, func
-from sqlalchemy.orm import Session
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from . import models, schemas
 from .caldav_client import criar_ou_atualizar_evento
@@ -20,9 +20,9 @@ def calcular_duracao_minutos(
     return int((dt_fim - dt_inicio).total_seconds() // 60)
 
 
-def criar_turno(db: Session, payload: schemas.TurnoCreate) -> models.Turno:
+async def criar_turno(db: AsyncSession, payload: schemas.TurnoCreate) -> models.Turno:
     # Obter telegram_user_id da sessão PostgreSQL (setado via SET LOCAL app.current_user_id)
-    result = db.execute(select(func.current_setting('app.current_user_id', True)))
+    result = await db.execute(select(func.current_setting('app.current_user_id', True)))
     current_user_id = result.scalar()
     if not current_user_id:
         raise ValueError("telegram_user_id não definido na sessão (SET LOCAL app.current_user_id)")
@@ -39,7 +39,7 @@ def criar_turno(db: Session, payload: schemas.TurnoCreate) -> models.Turno:
         stmt_tipo = select(models.TipoTurno).where(
             func.lower(models.TipoTurno.nome) == payload.tipo.lower()
         )
-        tipo_db = db.scalar(stmt_tipo)
+        tipo_db = await db.scalar(stmt_tipo)
         if not tipo_db:
             tipo_livre = payload.tipo
 
@@ -54,7 +54,7 @@ def criar_turno(db: Session, payload: schemas.TurnoCreate) -> models.Turno:
         descricao_opcional=payload.descricao_opcional,
     )
     db.add(turno)
-    db.flush()
+    await db.flush()
 
     # integração CalDAV (one-way)
     try:
@@ -78,22 +78,23 @@ def criar_turno(db: Session, payload: schemas.TurnoCreate) -> models.Turno:
     # Expunge antes do commit para preservar os dados em memória
     # e evitar lazy loading que falharia por RLS (SET LOCAL é perdido após commit)
     db.expunge(turno)
-    db.commit()
+    await db.commit()
     return turno
 
 
-def listar_turnos_periodo(
-    db: Session,
+async def listar_turnos_periodo(
+    db: AsyncSession,
     inicio: date,
     fim: date,
-) -> list[models.Turno]:
+) -> Sequence[models.Turno]:
     stmt = (
         select(models.Turno)
         .where(models.Turno.data_referencia >= inicio)
         .where(models.Turno.data_referencia <= fim)
         .order_by(models.Turno.data_referencia, models.Turno.hora_inicio)
     )
-    return list(db.scalars(stmt).all())
+    result = await db.scalars(stmt)
+    return result.all()
 
 
 def _nome_tipo(turno: models.Turno) -> str | None:
@@ -140,54 +141,50 @@ def gerar_relatorio_periodo(
     )
 
 
-def listar_turnos_recentes(db: Session, limit: int = 5) -> list[models.Turno]:
+async def listar_turnos_recentes(db: AsyncSession, limit: int = 5) -> Sequence[models.Turno]:
     stmt = (
         select(models.Turno)
         .order_by(models.Turno.criado_em.desc())
         .limit(limit)
     )
-    return list(db.scalars(stmt).all())
+    result = await db.scalars(stmt)
+    return result.all()
 
 
-def delete_turno(db: Session, turno_id: int) -> bool:
-    turno = db.get(models.Turno, turno_id)
+async def delete_turno(db: AsyncSession, turno_id: int) -> bool:
+    turno = await db.get(models.Turno, turno_id)
     if not turno:
         return False
     
-    # Se tiver integração, tentar remover (opcional, pode falhar sem problemas)
-    # Aqui só deletamos do banco local.
-    # Se quisesse deletar do caldav, teria que chamar caldav_client.delete_evento(turno.integracao.event_uid)
-    # Mas o caldav_client atual não expõe delete. Deixaremos assim por enquanto.
-    
-    db.delete(turno)
-    db.commit()
+    await db.delete(turno)
+    await db.commit()
     return True
 
 
 # Funções CRUD para Usuario
-def get_usuario_by_telegram_id(db: Session, telegram_user_id: int) -> models.Usuario | None:
+async def get_usuario_by_telegram_id(db: AsyncSession, telegram_user_id: int) -> models.Usuario | None:
     stmt = select(models.Usuario).where(
         models.Usuario.telegram_user_id == telegram_user_id
     )
-    return db.scalar(stmt)
+    return await db.scalar(stmt)
 
 
-def criar_usuario(db: Session, payload: schemas.UsuarioCreate) -> models.Usuario:
+async def criar_usuario(db: AsyncSession, payload: schemas.UsuarioCreate) -> models.Usuario:
     usuario = models.Usuario(
         telegram_user_id=payload.telegram_user_id,
         nome=payload.nome,
         numero_funcionario=payload.numero_funcionario,
     )
     db.add(usuario)
-    db.commit()
-    db.refresh(usuario)
+    await db.commit()
+    await db.refresh(usuario)
     return usuario
 
 
-def atualizar_usuario(
-    db: Session, telegram_user_id: int, payload: schemas.UsuarioUpdate
+async def atualizar_usuario(
+    db: AsyncSession, telegram_user_id: int, payload: schemas.UsuarioUpdate
 ) -> models.Usuario | None:
-    usuario = get_usuario_by_telegram_id(db, telegram_user_id)
+    usuario = await get_usuario_by_telegram_id(db, telegram_user_id)
     if not usuario:
         return None
     
@@ -196,8 +193,6 @@ def atualizar_usuario(
     if payload.numero_funcionario is not None:
         usuario.numero_funcionario = payload.numero_funcionario
     
-    db.commit()
-    db.refresh(usuario)
+    await db.commit()
+    await db.refresh(usuario)
     return usuario
-
-

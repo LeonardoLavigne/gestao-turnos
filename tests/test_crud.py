@@ -11,7 +11,7 @@ from app import crud, schemas
 
 
 class TestCalcularDuracaoMinutos:
-    """Testes para calcular_duracao_minutos."""
+    """Testes para calcular_duracao_minutos (síncrono - sem DB)."""
     
     def test_duracao_normal(self):
         """Turno de 8h às 16h = 480 minutos."""
@@ -75,15 +75,16 @@ class TestNomeTipo:
         assert resultado == "Plantão"
 
 
+@pytest.mark.asyncio
 class TestCriarTurno:
     """Testes para criar_turno."""
     
-    def test_criar_turno_simples(self, db_session_rls):
+    async def test_criar_turno_simples(self, db_session_rls):
         """Criar turno básico sem tipo."""
         db = db_session_rls
         
-        db.execute(text("BEGIN"))
-        db.execute(text("SET LOCAL app.current_user_id = '999'"))
+        await db.execute(text("BEGIN"))
+        await db.execute(text("SELECT set_config('app.current_user_id', '999', true)"))
         
         payload = schemas.TurnoCreate(
             data_referencia=date(2024, 6, 15),
@@ -91,7 +92,7 @@ class TestCriarTurno:
             hora_fim=time(16, 0),
         )
         
-        turno = crud.criar_turno(db, payload)
+        turno = await crud.criar_turno(db, payload)
         
         assert turno.id is not None
         assert turno.telegram_user_id == 999
@@ -100,18 +101,17 @@ class TestCriarTurno:
         assert turno.hora_fim == time(16, 0)
         assert turno.duracao_minutos == 480
         
-        # Cleanup - nova transação após commit do criar_turno
-        db.execute(text("BEGIN"))
-        db.execute(text("SET LOCAL app.current_user_id = '999'"))
-        db.execute(text(f"DELETE FROM turnos WHERE id = {turno.id}"))
-        db.execute(text("COMMIT"))
+        # Cleanup
+        await db.execute(text("SELECT set_config('app.current_user_id', '999', true)"))
+        await db.execute(text(f"DELETE FROM turnos WHERE id = {turno.id}"))
+        await db.commit()
     
-    def test_criar_turno_com_tipo_livre(self, db_session_rls):
+    async def test_criar_turno_com_tipo_livre(self, db_session_rls):
         """Criar turno com tipo que não existe no banco (tipo_livre)."""
         db = db_session_rls
         
-        db.execute(text("BEGIN"))
-        db.execute(text("SET LOCAL app.current_user_id = '999'"))
+        await db.execute(text("BEGIN"))
+        await db.execute(text("SELECT set_config('app.current_user_id', '999', true)"))
         
         payload = schemas.TurnoCreate(
             data_referencia=date(2024, 6, 16),
@@ -120,24 +120,23 @@ class TestCriarTurno:
             tipo="TipoNaoExiste",
         )
         
-        turno = crud.criar_turno(db, payload)
+        turno = await crud.criar_turno(db, payload)
         
         assert turno.tipo_livre == "TipoNaoExiste"
         assert turno.tipo is None
         assert turno.telegram_user_id == 999
         
-        # Cleanup - nova transação após commit do criar_turno
-        db.execute(text("BEGIN"))
-        db.execute(text("SET LOCAL app.current_user_id = '999'"))
-        db.execute(text(f"DELETE FROM turnos WHERE id = {turno.id}"))
-        db.execute(text("COMMIT"))
+        # Cleanup
+        await db.execute(text("SELECT set_config('app.current_user_id', '999', true)"))
+        await db.execute(text(f"DELETE FROM turnos WHERE id = {turno.id}"))
+        await db.commit()
     
-    def test_criar_turno_sem_user_id_erro(self, db_session_rls):
+    async def test_criar_turno_sem_user_id_erro(self, db_session_rls):
         """Criar turno sem current_user_id setado deve dar erro."""
         db = db_session_rls
         
         # Não seta current_user_id
-        db.execute(text("BEGIN"))
+        await db.execute(text("BEGIN"))
         
         payload = schemas.TurnoCreate(
             data_referencia=date(2024, 6, 17),
@@ -147,13 +146,13 @@ class TestCriarTurno:
         
         import pytest
         with pytest.raises(ValueError, match="telegram_user_id não definido"):
-            crud.criar_turno(db, payload)
+            await crud.criar_turno(db, payload)
         
-        db.execute(text("ROLLBACK"))
+        await db.rollback()
 
 
 class TestGerarRelatorioPeriodo:
-    """Testes para gerar_relatorio_periodo."""
+    """Testes para gerar_relatorio_periodo (síncrono - sem DB)."""
     
     def test_relatorio_vazio(self):
         """Relatório sem turnos."""
@@ -205,88 +204,92 @@ class TestGerarRelatorioPeriodo:
         assert dia2.total_minutos == 360
 
 
+@pytest.mark.asyncio
 class TestListarTurnosPeriodo:
     """Testes para listar_turnos_periodo."""
     
-    def test_listar_turnos_periodo_vazio(self, db_session_rls):
+    async def test_listar_turnos_periodo_vazio(self, db_session_rls):
         """Listar período sem turnos retorna lista vazia."""
         db = db_session_rls
         
-        db.execute(text("BEGIN"))
-        db.execute(text("SET LOCAL app.current_user_id = '888'"))
+        await db.execute(text("BEGIN"))
+        await db.execute(text("SELECT set_config('app.current_user_id', '888', true)"))
         
-        turnos = crud.listar_turnos_periodo(
+        turnos = await crud.listar_turnos_periodo(
             db,
             date(2099, 1, 1),
             date(2099, 1, 31)
         )
         
-        db.execute(text("COMMIT"))
+        await db.commit()
         assert turnos == []
 
 
+@pytest.mark.asyncio
 class TestListarTurnosRecentes:
     """Testes para listar_turnos_recentes."""
     
-    def test_listar_recentes_vazio(self, db_session_rls):
+    async def test_listar_recentes_vazio(self, db_session_rls):
         """Listar recentes de usuário sem turnos."""
         db = db_session_rls
         
-        db.execute(text("BEGIN"))
-        db.execute(text("SET LOCAL app.current_user_id = '777'"))
+        await db.execute(text("BEGIN"))
+        await db.execute(text("SELECT set_config('app.current_user_id', '777', true)"))
         
-        turnos = crud.listar_turnos_recentes(db, limit=5)
+        turnos = await crud.listar_turnos_recentes(db, limit=5)
         
-        db.execute(text("COMMIT"))
+        await db.commit()
         # Pode retornar lista vazia ou com alguns turnos do usuário
         assert isinstance(turnos, list)
 
 
+@pytest.mark.asyncio
 class TestDeleteTurno:
     """Testes para delete_turno."""
     
-    def test_delete_turno_inexistente(self, db_session_rls):
+    async def test_delete_turno_inexistente(self, db_session_rls):
         """Deletar turno inexistente retorna False."""
         db = db_session_rls
         
-        db.execute(text("BEGIN"))
-        db.execute(text("SET LOCAL app.current_user_id = '777'"))
+        await db.execute(text("BEGIN"))
+        await db.execute(text("SELECT set_config('app.current_user_id', '777', true)"))
         
-        resultado = crud.delete_turno(db, 999999)
+        resultado = await crud.delete_turno(db, 999999)
         
-        db.execute(text("COMMIT"))
+        await db.commit()
         assert resultado is False
 
 
+@pytest.mark.asyncio
 class TestGetUsuarioByTelegramId:
     """Testes para get_usuario_by_telegram_id."""
     
-    def test_buscar_usuario_inexistente(self, db_session_rls):
+    async def test_buscar_usuario_inexistente(self, db_session_rls):
         """Buscar usuário inexistente retorna None."""
         db = db_session_rls
         
-        db.execute(text("BEGIN"))
-        db.execute(text("SET LOCAL app.current_user_id = '333333'"))
+        await db.execute(text("BEGIN"))
+        await db.execute(text("SELECT set_config('app.current_user_id', '333333', true)"))
         
-        resultado = crud.get_usuario_by_telegram_id(db, 333333)
+        resultado = await crud.get_usuario_by_telegram_id(db, 333333)
         
-        db.execute(text("COMMIT"))
+        await db.commit()
         assert resultado is None
 
 
+@pytest.mark.asyncio
 class TestAtualizarUsuario:
     """Testes para atualizar_usuario."""
     
-    def test_atualizar_usuario_inexistente(self, db_session_rls):
+    async def test_atualizar_usuario_inexistente(self, db_session_rls):
         """Atualizar usuário inexistente retorna None."""
         db = db_session_rls
         
-        db.execute(text("BEGIN"))
-        db.execute(text("SET LOCAL app.current_user_id = '444444'"))
+        await db.execute(text("BEGIN"))
+        await db.execute(text("SELECT set_config('app.current_user_id', '444444', true)"))
         
         update_payload = schemas.UsuarioUpdate(nome="Novo Nome")
-        resultado = crud.atualizar_usuario(db, 444444, update_payload)
+        resultado = await crud.atualizar_usuario(db, 444444, update_payload)
         
-        db.execute(text("COMMIT"))
+        await db.commit()
         assert resultado is None
-

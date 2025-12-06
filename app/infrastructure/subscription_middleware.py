@@ -1,8 +1,8 @@
 from fastapi import Request, HTTPException
 from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.responses import JSONResponse
-from sqlalchemy.orm import Session
-from app.database import SessionLocal
+from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy import select
 from app.models import Assinatura
 
 class SubscriptionMiddleware(BaseHTTPMiddleware):
@@ -15,9 +15,6 @@ class SubscriptionMiddleware(BaseHTTPMiddleware):
         # pois o body é stream. O ideal é verificar no nível do handler do bot.
         # Mas se tivermos endpoints de API protegidos, este middleware serve.
         
-        # Como este projeto é focado no Bot, a lógica de bloqueio deve estar
-        # principalmente nos Handlers do Telegram ou em um Decorator.
-        
         # MUDANÇA DE PLANO: Middleware HTTP não é o melhor lugar para bloquear 
         # comandos de bot que chegam via polling ou webhook misturado.
         # Vou manter este arquivo como placeholder para futura API REST,
@@ -26,13 +23,15 @@ class SubscriptionMiddleware(BaseHTTPMiddleware):
         response = await call_next(request)
         return response
 
-def check_subscription(telegram_user_id: int, db: Session) -> bool:
+async def check_subscription(telegram_user_id: int, db: AsyncSession) -> bool:
     """
     Verifica se o usuário tem assinatura ativa.
     """
-    assinatura = db.query(Assinatura).filter(
+    stmt = select(Assinatura).where(
         Assinatura.telegram_user_id == telegram_user_id,
         Assinatura.status.in_(["active", "trialing"])
-    ).first()
+    )
+    result = await db.execute(stmt)
+    assinatura = result.scalar()
     
     return assinatura is not None

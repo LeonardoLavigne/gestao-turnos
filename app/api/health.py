@@ -3,7 +3,7 @@ Health check endpoint for monitoring application status.
 """
 import logging
 from fastapi import APIRouter, Depends, HTTPException
-from sqlalchemy.orm import Session
+from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import text
 
 from app.database import get_db
@@ -14,13 +14,13 @@ router = APIRouter()
 
 
 @router.get("/health", tags=["Monitoring"])
-def health_check(db: Session = Depends(get_db)):
+async def health_check(db: AsyncSession = Depends(get_db)):
     """
     Verifica a saúde da aplicação e conexão com o banco de dados.
     """
     try:
         # Testar conexão com DB
-        db.execute(text("SELECT 1"))
+        await db.execute(text("SELECT 1"))
         return {"status": "ok", "database": "connected"}
     except Exception as e:
         logger.error("Health check failed", extra={"error": str(e)})
