@@ -1,7 +1,7 @@
 import pytest
 import time
 from unittest.mock import AsyncMock, MagicMock
-from app.telegram_bot import rate_limit, user_message_timestamps, RATE_LIMIT_MSG, RATE_LIMIT_WINDOW
+from app.infrastructure.telegram.decorators import rate_limit, user_message_timestamps, RATE_LIMIT_MSG, RATE_LIMIT_WINDOW
 
 @pytest.mark.asyncio
 async def test_rate_limit_decorator():
