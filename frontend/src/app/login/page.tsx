@@ -27,12 +27,10 @@ export default function LoginPage() {
             const response = await api.post('/auth/login', user);
             const { access_token } = response.data;
 
-            // Store in Cookie (expires in 7 days)
-            Cookies.set('access_token', access_token, { expires: 7, path: '/' });
-            // Keep localStorage for now for api.ts backward compatibility if needed,
-            // but we will update api.ts to read cookie too.
-            localStorage.setItem('access_token', access_token);
-            localStorage.setItem('user', JSON.stringify(response.data.user)); // Still useful for quick UI access
+            // Salva no Cookie (para o Middleware ler)
+            Cookies.set('auth_token', access_token, { expires: 7, path: '/' });
+            // Salva no LocalStorage (opcional, para acesso fácil via JS)
+            localStorage.setItem('token', access_token);
 
             router.push('/dashboard');
         } catch (err: any) {

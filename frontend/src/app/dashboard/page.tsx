@@ -5,6 +5,7 @@ import api from '@/lib/api';
 import Cookies from 'js-cookie';
 import { LogOut, Loader2 } from 'lucide-react';
 import { useQuery } from '@tanstack/react-query';
+import { NovoTurnoDialog } from '@/components/novo-turno-dialog';
 
 // Fetchers
 const fetchUser = async () => {
@@ -37,15 +38,15 @@ export default function Dashboard() {
     if (userError) {
         // @ts-expect-error - Axios Error type check
         if (userError.response?.status === 401 || userError.response?.status === 403) {
-            Cookies.remove('access_token');
-            localStorage.removeItem('access_token');
+            Cookies.remove('auth_token');
+            localStorage.removeItem('token');
             router.push('/login');
         }
     }
 
     const handleLogout = () => {
-        Cookies.remove('access_token');
-        localStorage.removeItem('access_token');
+        Cookies.remove('auth_token');
+        localStorage.removeItem('token');
         localStorage.removeItem('user');
         router.push('/login');
     };
@@ -105,7 +106,7 @@ export default function Dashboard() {
                 <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
                     <div className="p-6 border-b border-gray-100 flex justify-between items-center">
                         <h2 className="text-lg font-semibold text-gray-800">Turnos Recentes</h2>
-                        {/* TODO: Botão Novo Turno */}
+                        <NovoTurnoDialog />
                     </div>
 
                     {loadingTurnos ? (
