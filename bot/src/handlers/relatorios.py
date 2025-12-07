@@ -14,6 +14,7 @@ from src.config import get_settings
 from src.api_client import relatorio_client
 from src.parsers import parse_mes_arg
 from src.utils import usuario_autorizado, formatar_relatorio
+from src.decorators import subscription_required
 
 logger = logging.getLogger(__name__)
 
@@ -115,6 +116,7 @@ async def relatorio_mes_command(update: Update, context: ContextTypes.DEFAULT_TY
     await update.message.reply_text(texto)
 
 
+@subscription_required
 async def _relatorio_mes_pdf_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     """Handler para comando /mes pdf - relatório mensal em PDF."""
     user = update.effective_user

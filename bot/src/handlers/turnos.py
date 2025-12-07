@@ -20,7 +20,7 @@ logger = logging.getLogger(__name__)
 
 
 @rate_limit
-@subscription_required
+
 async def registrar_turno_msg(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     """Handler para mensagens de registro de turno."""
     if not update.message or not update.message.text:

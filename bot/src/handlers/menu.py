@@ -11,7 +11,8 @@ from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import ContextTypes
 
 from src.config import get_settings
-from src.api_client import turno_client
+from src.config import get_settings
+from src.api_client import turno_client, usuario_client
 from src.utils import usuario_autorizado
 from src.handlers.turnos import handle_delete_callback
 from src.handlers.relatorios import (
@@ -101,6 +102,22 @@ async def _handle_menu_callback(query, context, data: str) -> None:
         await query.edit_message_text(texto)
 
     elif action == "mes_pdf":
+        # Check Subscription
+        try:
+            profile = await usuario_client.buscar_usuario(user_id)
+            status = profile.get("assinatura_status") if profile else None
+            if status not in ("active", "trialing"):
+                await query.edit_message_text(
+                    "🔒 *Recurso Premium*\n\n"
+                    "Relatórios em PDF são exclusivos para assinantes.\n"
+                    "Use /assinar para liberar.",
+                    parse_mode="Markdown"
+                )
+                return
+        except Exception:
+            await query.edit_message_text("Erro ao verificar assinatura.")
+            return
+
         await query.edit_message_text("Gerando PDF do mês atual...")
         pdf_bytes, filename, caption = await gerar_pdf_mes_atual(user_id)
         
@@ -138,7 +155,6 @@ async def _handle_menu_callback(query, context, data: str) -> None:
         )
 
     elif action == "perfil":
-        from src.api_client import usuario_client
         perfil = await usuario_client.buscar_usuario(user_id)
         
         if not perfil:
