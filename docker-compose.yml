@@ -11,23 +11,20 @@ services:
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
     volumes:
       - postgres_data:/var/lib/postgresql/data
-    # ports:
-    #   - "5432:5432"  # 🔒 Descomente apenas se precisar acessar o banco de fora do Docker
     healthcheck:
       test: [ "CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-postgres} -d ${POSTGRES_DB:-gestao_turnos}" ]
       interval: 5s
       timeout: 5s
       retries: 5
 
-  gestao-turnos:
+  backend:
     build:
-      context: .
-      target: development # ✅ Usar stage de desenvolvimento
+      context: ./backend
+      target: development
       args:
-        # ✅ Passar UID/GID do usuário do host para evitar problemas de permissão
         USER_ID: ${USER_ID:-1000}
         GROUP_ID: ${GROUP_ID:-1000}
-    container_name: gestao_turnos
+    container_name: gestao_turnos_backend
     restart: unless-stopped
     depends_on:
       postgres:
@@ -38,14 +35,33 @@ services:
       - APP_TIMEZONE=${APP_TIMEZONE:-America/Sao_Paulo}
       - DATABASE_URL=${DATABASE_URL:-postgresql+psycopg://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-postgres}@postgres:5432/${POSTGRES_DB:-gestao_turnos}}
     volumes:
-      # Bind mount para desenvolvimento (código e migrations)
-      - ./data:/app/data
-      # ✅ IMPORTANTE: Para Alembic funcionar sem problemas de permissão
-      - ./app:/app/app:rw
-      - ./migrations:/app/migrations:rw
-      - ./tests:/app/tests:rw
+      - ./backend/data:/app/data
+      - ./backend/app:/app/app:rw
+      - ./backend/migrations:/app/migrations:rw
+      - ./backend/tests:/app/tests:rw
     ports:
       - "8000:8000"
+    networks:
+      - app-network
+
+  bot:
+    build:
+      context: ./bot
+      target: development
+      args:
+        USER_ID: ${USER_ID:-1000}
+        GROUP_ID: ${GROUP_ID:-1000}
+    container_name: gestao_turnos_bot
+    restart: unless-stopped
+    depends_on:
+      - backend
+    env_file:
+      - .env
+    environment:
+      - API_BASE_URL=http://backend:8000
+    volumes:
+      - ./bot/src:/app/src:rw
+      - ./bot/tests:/app/tests:rw
     networks:
       - app-network
 

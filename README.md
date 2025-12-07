@@ -77,7 +77,7 @@
 
 4. **Aplique as migrações do banco:**
    ```bash
-   docker compose exec gestao-turnos uv run alembic upgrade head
+   docker compose exec backend uv run alembic upgrade head
    ```
 
 5. **Acesse:**
@@ -88,34 +88,40 @@
 
 ## 🧪 Testes e Qualidade
 
-O projeto mantém uma suíte de testes robusta utilizando `pytest` e `pytest-asyncio`.
+O projeto mantém uma suíte de testes robusta utilizando `pytest`.
 
 ```bash
-# Executar todos os testes
-docker compose run --rm gestao-turnos uv run pytest tests/ -v
+# Testes do Backend
+docker compose exec backend uv run pytest tests/ -v
+
+# Testes do Bot
+docker compose exec bot uv run pytest tests/ -v
 ```
 
 **Estatísticas Atuais:**
-- ✅ **44+ Testes Automatizados** passando.
-- Cobertura inclui: CRUD, RLS Isolation, Stripe Webhooks, Lógica de Trial e Endpoints.
+- ✅ **43+ Testes Backend** passando.
+- ✅ **Testes Bot** passando.
 
 ---
 
 ## 📂 Estrutura do Projeto
 
 ```
-app/
-├── api/                  # Endpoints FastAPI (Webhooks, Health, etc)
-├── application/          # Casos de uso (Clean Arch)
-├── domain/               # Entidades e Regras de Negócio
-├── infrastructure/       # Implementações concretas (Telegram, DB, Logger)
-│   ├── middleware.py     # RLS Middleware
-│   └── telegram/         # Bot Handlers e Client
-├── models.py             # Modelos SQLAlchemy
-├── schemas.py            # Schemas Pydantic
-└── main.py               # Entrypoint da Aplicação
-migrations/               # Scripts Alembic
-tests/                    # Suíte de Testes
+backend/                  # API Rest (FastAPI)
+├── app/
+│   ├── api/              # Endpoints
+│   ├── services/         # Regras de Negócio (Stripe, Relatórios)
+│   └── main.py           # Entrypoint API
+├── tests/                # Testes de Integração Backend
+└── Dockerfile
+
+bot/                      # Frontend Telegram
+├── src/
+│   ├── handlers/         # Comandos e Callbacks
+│   ├── api_client.py     # Cliente HTTP para Backend
+│   └── main.py           # Entrypoint Bot
+├── tests/                # Testes Unitários Bot
+└── Dockerfile
 ```
 
 ## 🛠️ Stack Tecnológico
