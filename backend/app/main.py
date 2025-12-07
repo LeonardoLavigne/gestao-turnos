@@ -57,6 +57,8 @@ app.add_middleware(InternalSecurityMiddleware) # Security Last (First to execute
 from app.core.config import get_settings
 settings = get_settings()
 
+print(f"DEBUG: Loaded CORS Origins: {settings.backend_cors_origins}")
+
 if settings.backend_cors_origins:
     app.add_middleware(
         CORSMiddleware,

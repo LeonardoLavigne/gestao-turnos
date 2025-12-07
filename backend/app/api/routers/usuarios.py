@@ -55,8 +55,30 @@ async def get_usuario(
     result = await db.execute(stmt)
     assinatura = result.scalar()
     
+    # 🌟 Contar turnos do mês atual (para controle do plano Free)
+    from datetime import date
+    from sqlalchemy import func
+    today = date.today()
+    start_date = date(today.year, today.month, 1)
+    if today.month == 12:
+        end_date = date(today.year + 1, 1, 1)
+    else:
+        end_date = date(today.year, today.month + 1, 1) # Primeiro dia do mês seguinte (exclusivo)
+
+    # Precisamos do ID interno do usuário (FK na tabela Turno é owner_id)
+    # CORREÇÃO: O modelo Turno usa telegram_user_id direto, não FK para tabela usuario
+    count_stmt = select(func.count()).select_from(models.Turno).where(
+        models.Turno.telegram_user_id == telegram_user_id,
+        models.Turno.data_referencia >= start_date,
+        models.Turno.data_referencia < end_date
+    )
+    count_result = await db.execute(count_stmt)
+    turnos_mes = count_result.scalar() or 0
+
     # Converter para schema e preencher campos extras
     usuario_read = schemas.UsuarioRead.model_validate(usuario)
+    usuario_read.turnos_registrados_mes_atual = turnos_mes
+
     if assinatura:
         usuario_read.assinatura_status = assinatura.status
         usuario_read.assinatura_plano = assinatura.plano

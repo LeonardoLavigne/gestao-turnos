@@ -57,15 +57,19 @@ export function NovoTurnoDialog() {
 
     const mutation = useMutation({
         mutationFn: async (values: z.infer<typeof formSchema>) => {
-            // Backend espera datetime ISO
-            // Input datetime-local retorna YYYY-MM-DDTHH:mm
-            // Podemos enviar direto ou formatar se necessario.
-            // O backend espera: data_inicio, data_fim, local (opcional)
-            await api.post('/turnos/', {
-                data_inicio: new Date(values.data_inicio).toISOString(),
-                data_fim: new Date(values.data_fim).toISOString(),
-                local: values.local,
-            });
+            const inicio = new Date(values.data_inicio);
+            const fim = new Date(values.data_fim);
+
+            // Formatar para o Backend (YYYY-MM-DD e HH:MM)
+            const payload = {
+                data_referencia: inicio.toISOString().split('T')[0], // YYYY-MM-DD
+                hora_inicio: inicio.toTimeString().split(' ')[0], // HH:MM:SS
+                hora_fim: fim.toTimeString().split(' ')[0], // HH:MM:SS
+                tipo: values.local || "Comum", // Usando 'local' como Tipo por enquanto
+                descricao_opcional: values.local ? `Local: ${values.local}` : undefined
+            };
+
+            await api.post('/turnos/', payload);
         },
         onSuccess: () => {
             setOpen(false);
@@ -73,9 +77,13 @@ export function NovoTurnoDialog() {
             // Atualiza a lista de turnos automaticamente
             queryClient.invalidateQueries({ queryKey: ['turnos'] });
         },
-        onError: (error) => {
+        onError: (error: any) => {
             console.error("Erro ao criar turno:", error);
-            alert("Erro ao criar turno. Verifique se você atingiu o limite do plano grátis.");
+            // Melhorar mensagem de erro baseada no status
+            const msg = error.response?.status === 403
+                ? "Limite do plano grátis atingido."
+                : "Erro ao criar turno. Verifique os dados.";
+            alert(msg);
         }
     });
 

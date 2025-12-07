@@ -93,12 +93,14 @@ export default function Dashboard() {
                 <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
                     <h2 className="text-lg font-semibold text-gray-800 mb-4">Seu Plano</h2>
                     <div className="flex items-center gap-4">
-                        <div className={`px-3 py-1 rounded-full text-sm font-medium ${user?.is_premium ? 'bg-blue-100 text-blue-700' : 'bg-gray-100 text-gray-700'}`}>
-                            {user?.is_premium ? 'Premium 🌟' : 'Gratuito'}
+                        <div className={`px-3 py-1 rounded-full text-sm font-medium ${user?.assinatura_plano === 'pro' ? 'bg-blue-100 text-blue-700' : 'bg-gray-100 text-gray-700'}`}>
+                            {user?.assinatura_plano === 'pro' ? 'Premium 🌟' : 'Gratuito'}
                         </div>
-                        <span className="text-gray-500 text-sm">
-                            {user?.is_premium ? 'Turnos ilimitados' : 'Limite de 30 turnos/mês'}
-                        </span>
+                        {user?.assinatura_plano !== 'pro' && (
+                            <span className="text-gray-500 text-sm">
+                                {Math.max(0, 30 - (user?.turnos_registrados_mes_atual || 0))} turnos disponíveis
+                            </span>
+                        )}
                     </div>
                 </div>
 
@@ -133,16 +135,17 @@ export default function Dashboard() {
                                         turnos?.map((turno: any) => (
                                             <tr key={turno.id} className="hover:bg-gray-50 transition-colors">
                                                 <td className="px-6 py-4 font-medium text-gray-900">
-                                                    {new Date(turno.data_inicio).toLocaleDateString()}
+                                                    {new Date(turno.data_referencia).toLocaleDateString()}
                                                 </td>
                                                 <td className="px-6 py-4 text-gray-600">
-                                                    {new Date(turno.data_inicio).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })} -
-                                                    {new Date(turno.data_fim).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                                                    {turno.hora_inicio.slice(0, 5)} - {turno.hora_fim.slice(0, 5)}
                                                 </td>
                                                 <td className="px-6 py-4 text-gray-600">
-                                                    {Math.round((new Date(turno.data_fim).getTime() - new Date(turno.data_inicio).getTime()) / 3600000)}h
+                                                    {Math.round(turno.duracao_minutos / 60)}h {turno.duracao_minutos % 60 > 0 ? `${turno.duracao_minutos % 60}min` : ''}
                                                 </td>
-                                                <td className="px-6 py-4 text-gray-600">{turno.local || '-'}</td>
+                                                <td className="px-6 py-4 text-gray-600">
+                                                    {turno.tipo || turno.descricao_opcional || '-'}
+                                                </td>
                                             </tr>
                                         ))
                                     )}

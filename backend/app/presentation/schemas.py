@@ -103,6 +103,7 @@ class UsuarioRead(UsuarioBase):
     telegram_user_id: int
     assinatura_status: Optional[str] = "inactive"
     assinatura_plano: Optional[str] = "free"
+    turnos_registrados_mes_atual: int = 0
     criado_em: datetime
     atualizado_em: datetime
     model_config = ConfigDict(from_attributes=True)

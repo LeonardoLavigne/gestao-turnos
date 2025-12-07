@@ -1,6 +1,6 @@
 from pydantic_settings import BaseSettings, SettingsConfigDict
 from pydantic import Field, field_validator
-from typing import Optional, List
+from typing import Optional, List, Union
 from functools import lru_cache
 import os
 
@@ -33,7 +33,7 @@ class Settings(BaseSettings):
     access_token_expire_minutes: int = 60 * 24 * 7 # 7 days
     
     # CORS
-    backend_cors_origins: List[str] = []
+    backend_cors_origins: Union[List[str], str] = []
 
     @field_validator("backend_cors_origins", mode="before")
     @classmethod
