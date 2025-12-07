@@ -10,28 +10,13 @@ class Settings(BaseSettings):
     app_name: str = "Gestão de Turnos"
     timezone: str = Field(default="America/Sao_Paulo", validation_alias="APP_TIMEZONE")
 
-    # DB
-    database_url: Optional[str] = None
-    sqlite_path: str = "data/gestao_turnos.db"
-    
-    # Stripe Configuration
-    stripe_api_key: str = ""
-    stripe_webhook_secret: str = ""
-    stripe_price_id_pro: str = ""
+    # API Connection
     base_url: str = "http://localhost:8000"
+    internal_api_key: str
 
     # Telegram
     telegram_bot_token: str = ""
     telegram_allowed_users: List[int] = []
-
-    # Security
-    internal_api_key: str
-
-    # CalDAV / Disroot
-    caldav_url: str = ""
-    caldav_username: str = ""
-    caldav_password: str = ""
-    caldav_calendar_path: str = ""
 
     @field_validator("telegram_allowed_users", mode="before")
     @classmethod
