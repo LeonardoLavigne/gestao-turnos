@@ -8,6 +8,7 @@ import calendar
 from app.domain.entities.turno import Turno
 from app.domain.repositories.turno_repository import TurnoRepository
 from app.domain.repositories.assinatura_repository import AssinaturaRepository
+from app.domain.services.calendar_service import CalendarService
 from app.domain.exceptions.freemium_exception import LimiteTurnosExcedidoException
 from app.core.config import get_settings
 
@@ -20,9 +21,16 @@ class CriarTurnoUseCase:
     including duration calculation, validation, and CalDAV sync.
     """
 
-    def __init__(self, turno_repository: TurnoRepository, assinatura_repository: AssinaturaRepository, session):
+    def __init__(
+        self, 
+        turno_repository: TurnoRepository, 
+        assinatura_repository: AssinaturaRepository, 
+        calendar_service: CalendarService,
+        session
+    ):
         self.turno_repository = turno_repository
         self.assinatura_repository = assinatura_repository
+        self.calendar_service = calendar_service
         # Session is treated as a Unit of Work here
         self.session = session
 
@@ -66,28 +74,23 @@ class CriarTurnoUseCase:
         # 2. Persist (Infrastructure)
         saved_turno = await self.turno_repository.criar(turno)
         
-        # 3. CalDAV Integration (Infrastructure / External Service)
+        # 3. CalDAV Integration (Injected Logic)
         # Only sync if user is NOT Free (Premium feature)
         if assinatura and not assinatura.is_free:
-            # TODO: Inject CalDAV service instead of importing directly ideally
-            from app.infrastructure.external.caldav_service import criar_ou_atualizar_evento
-            
             try:
-                new_uid = criar_ou_atualizar_evento(saved_turno, None)
-                saved_turno.event_uid = new_uid
-                
-                # 4. Update with UID if needed
-                saved_turno = await self.turno_repository.atualizar(saved_turno)
+                # Use abstraction, no infrastructure import here
+                new_uid = self.calendar_service.sync_event(saved_turno)
+                if new_uid:
+                    saved_turno.event_uid = new_uid
+                    
+                    # 4. Update with UID if needed
+                    saved_turno = await self.turno_repository.atualizar(saved_turno)
             except Exception:
                 # Log error but don't fail the transaction?
-                # Or pass? crud.py passed.
+                # Integration failure should be non-blocking for shift creation
                 pass
             
         # 5. Commit Transaction
         await self.session.commit()
-        # await self.session.refresh(saved_turno) # Cannot refresh Entity, but repository logic handles it internally? 
-        # Actually repo returns Entity, so we are fine. 
-        # But session commit might expire objects if using Models directly.
-        # Since we use Repositories converting to Entities, we are safe.
         
         return saved_turno

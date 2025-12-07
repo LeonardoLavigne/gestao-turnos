@@ -30,7 +30,8 @@ def mock_settings(monkeypatch):
 @pytest.fixture
 def use_case(mock_turno_repo, mock_assinatura_repo):
     session = AsyncMock() # Mock Unit of Work session
-    return CriarTurnoUseCase(mock_turno_repo, mock_assinatura_repo, session)
+    mock_calendar_service = MagicMock()
+    return CriarTurnoUseCase(mock_turno_repo, mock_assinatura_repo, mock_calendar_service, session)
 
 @pytest.mark.asyncio
 async def test_create_shift_free_user_within_limit(use_case, mock_assinatura_repo, mock_turno_repo, mock_settings, monkeypatch):
@@ -43,10 +44,15 @@ async def test_create_shift_free_user_within_limit(use_case, mock_assinatura_rep
     )
     mock_turno_repo.contar_por_periodo.return_value = 29
     
-    # Mock CalDAV success
-    mock_caldav = MagicMock(return_value="uid_123")
-    monkeypatch.setattr("app.infrastructure.external.caldav_service.criar_ou_atualizar_evento", mock_caldav)
-
+    mock_turno_repo.contar_por_periodo.return_value = 29
+    
+    # Mock CalDAV success handled via injection in fixture
+    # But we need access to the mock inside the fixture to set result?
+    # Actually, default magicmock returns another magicmock, truthy.
+    # We can check specific behavior if we extracted the mock from the use_case object.
+    
+    # For this test, we just care that it doesn't fail. Use injected mock behavior.
+    
     result = await use_case.execute(
         telegram_user_id=user_id,
         data_referencia=date(2025, 1, 15),
@@ -91,9 +97,9 @@ async def test_create_shift_pro_user_ignores_limit(use_case, mock_assinatura_rep
     )
     mock_turno_repo.contar_por_periodo.return_value = 1000
 
-    # Mock CalDAV success
-    mock_caldav = MagicMock(return_value="uid_456")
-    monkeypatch.setattr("app.infrastructure.external.caldav_service.criar_ou_atualizar_evento", mock_caldav)
+    mock_turno_repo.contar_por_periodo.return_value = 1000
+
+    # Mock CalDAV success (handled by injected mock)
 
     await use_case.execute(
         telegram_user_id=user_id,
@@ -116,18 +122,8 @@ async def test_create_shift_caldav_failure_is_ignored(use_case, mock_assinatura_
         criado_em=None, atualizado_em=None
     )
     
-    # Mock CalDAV import/function using monkeypatch on the MODULE where it is imported
-    # Note: We need to patch where it is USED, i.e., app.application.use_cases.turnos.criar_turno
-    
-    mock_caldav = MagicMock(side_effect=Exception("CalDAV Error"))
-    monkeypatch.setattr("app.infrastructure.external.caldav_service.criar_ou_atualizar_evento", mock_caldav)
-    
-    # IMPORTANT: Since `from app.caldav_client import` happens INSIDE the method, 
-    # we need to make sure we patch it correctly. 
-    # Actually, Python imports are cached. If we patch the module `app.caldav_client`, it should work.
-    
-    # However, since the import is inside the function: `from app.caldav_client import criar_ou_atualizar_evento`
-    # patching `app.caldav_client.criar_ou_atualizar_evento` works because the import looks up sys.modules.
+    # Mock CalDAV failure
+    use_case.calendar_service.sync_event.side_effect = Exception("CalDAV Error")
 
     result = await use_case.execute(
         telegram_user_id=user_id,

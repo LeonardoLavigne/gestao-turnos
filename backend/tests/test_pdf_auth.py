@@ -35,7 +35,7 @@ async def test_pdf_endpoint_forbidden_for_free_user(monkeypatch):
         
         # Assert 403 Forbidden
         assert response.status_code == 403
-        assert "exclusiva para assinantes Premium" in response.json()["detail"]
+        assert "Funcionalidade disponível apenas para usuários Premium" in response.json()["detail"]
 
 @pytest.mark.asyncio
 async def test_pdf_endpoint_allowed_for_pro_user(monkeypatch):
@@ -81,8 +81,13 @@ async def test_pdf_endpoint_allowed_for_pro_user(monkeypatch):
     mock_user_repo_cls = MagicMock(return_value=mock_user_repo)
     monkeypatch.setattr("app.infrastructure.repositories.sqlalchemy_usuario_repository.SqlAlchemyUsuarioRepository", mock_user_repo_cls)
     
-    # Mock pdf generation
-    monkeypatch.setattr("app.main.gerar_pdf_relatorio", lambda *args: b"%PDF-1.4...")
+    # Mock ReportLabPdfService
+    mock_pdf_service = MagicMock()
+    mock_pdf_service.gerar_pdf_mes.return_value = b"%PDF-1.4..."
+    mock_pdf_service_cls = MagicMock(return_value=mock_pdf_service)
+    
+    # We patch the class where it is defined, so when imported by main it uses the mock
+    monkeypatch.setattr("app.infrastructure.services.pdf_service.ReportLabPdfService", mock_pdf_service_cls)
     
     async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as ac:
         headers = {
@@ -93,3 +98,4 @@ async def test_pdf_endpoint_allowed_for_pro_user(monkeypatch):
         
         # Should be 200 OK
         assert response.status_code == 200
+        assert response.content == b"%PDF-1.4..."

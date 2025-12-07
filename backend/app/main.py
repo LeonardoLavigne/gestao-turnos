@@ -15,7 +15,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from .infrastructure.database.session import get_db
 from app.infrastructure.database import models
 from app.presentation import schemas
-from app.infrastructure.services.pdf_service import gerar_pdf_relatorio
+# from app.infrastructure.services.pdf_service import gerar_pdf_relatorio # Removed legacy import
 from app.infrastructure.middleware import RLSMiddleware, InternalSecurityMiddleware
 from app.api import webhook, health, pages
 from app.infrastructure.logger import setup_logging
@@ -87,10 +87,13 @@ async def criar_turno(
     from app.infrastructure.repositories.sqlalchemy_turno_repository import SqlAlchemyTurnoRepository
     from app.application.use_cases.turnos.criar_turno import CriarTurnoUseCase
     from app.infrastructure.repositories.sqlalchemy_assinatura_repository import SqlAlchemyAssinaturaRepository
+    from app.infrastructure.external.caldav_service import CalDAVService
 
     repo = SqlAlchemyTurnoRepository(db)
     assinatura_repo = SqlAlchemyAssinaturaRepository(db)
-    use_case = CriarTurnoUseCase(repo, assinatura_repo, db)
+    calendar_service = CalDAVService()
+    
+    use_case = CriarTurnoUseCase(repo, assinatura_repo, calendar_service, db)
     
     turno_entity = await use_case.execute(
 
@@ -294,69 +297,67 @@ async def relatorio_mes(
     tags=["Relatórios"],
     summary="Relatório mensal em PDF",
 )
+@app.get("/relatorios/mes/pdf")
 async def relatorio_mes_pdf(
+    ano: int,
+    mes: int,
     request: Request,
-    ano: int = Query(..., description="Ano do relatório"),
-    mes: int = Query(..., ge=1, le=12),
-    telegram_user_id: int = Query(None, description="ID do usuário para cabeçalho"),
     db: AsyncSession = Depends(get_db),
 ):
-    """Gera relatório de turnos em PDF para um mês específico."""
-    inicio = date(ano, mes, 1)
-    ultimo_dia = calendar.monthrange(ano, mes)[1]
-    fim = date(ano, mes, ultimo_dia)
-    
-    # Check user ID (header or param if bot)
-    # logic in original code used telegram_user_id param OR implied context?
-    # Original endpoint has telegram_user_id query param explicitly!
+    """Gera relatório em PDF dos turnos do mês."""
+    telegram_user_id = getattr(request.state, "telegram_user_id", None) or \
+                      (int(request.headers.get("X-Telegram-User-ID")) if request.headers.get("X-Telegram-User-ID") else None)
     if not telegram_user_id:
-        # Tenta header
-        telegram_user_id = getattr(request.state, "telegram_user_id", None) or \
-                           (int(request.headers.get("X-Telegram-User-ID")) if request.headers.get("X-Telegram-User-ID") else None)
-        
-    if not telegram_user_id:
-         raise HTTPException(status_code=401, detail="User ID required")
+        raise HTTPException(status_code=401, detail="X-Telegram-User-ID obrigatório")
 
-    # Check Subscription (Premium Feature)
-    from app.infrastructure.repositories.sqlalchemy_assinatura_repository import SqlAlchemyAssinaturaRepository
+    import calendar
+    from datetime import date
     
-    assinatura_repo = SqlAlchemyAssinaturaRepository(db)
-    assinatura = await assinatura_repo.get_by_user_id(telegram_user_id)
-    
-    if not assinatura or assinatura.is_free:
-        raise HTTPException(
-            status_code=403, 
-            detail="Funcionalidade exclusiva para assinantes Premium."
-        )
+    # Validar mês
+    try:
+        last_day = calendar.monthrange(ano, mes)[1]
+        inicio = date(ano, mes, 1)
+        fim = date(ano, mes, last_day)
+    except Exception:
+        raise HTTPException(status_code=400, detail="Data inválida")
 
+    # Instantiate dependencies
     from app.infrastructure.repositories.sqlalchemy_turno_repository import SqlAlchemyTurnoRepository
-    from app.application.use_cases.turnos.listar_turnos import ListarTurnosPeriodoUseCase
+    from app.infrastructure.repositories.sqlalchemy_usuario_repository import SqlAlchemyUsuarioRepository
+    from app.infrastructure.repositories.sqlalchemy_assinatura_repository import SqlAlchemyAssinaturaRepository
+    from app.infrastructure.services.pdf_service import ReportLabPdfService
+    from app.application.use_cases.relatorios.baixar_relatorio import BaixarRelatorioPdfUseCase
     
-    repo = SqlAlchemyTurnoRepository(db)
-    use_case = ListarTurnosPeriodoUseCase(repo)
+    turno_repo = SqlAlchemyTurnoRepository(db)
+    usuario_repo = SqlAlchemyUsuarioRepository(db)
+    assinatura_repo = SqlAlchemyAssinaturaRepository(db)
+    pdf_service = ReportLabPdfService() # Concrete implementation
     
-    turnos = await use_case.execute(telegram_user_id, inicio, fim)
-    
-    # Buscar informações do usuário se telegram_user_id for fornecido
-    usuario_info = None
-    if telegram_user_id:
-        from app.infrastructure.repositories.sqlalchemy_usuario_repository import SqlAlchemyUsuarioRepository
-        usuario_repo = SqlAlchemyUsuarioRepository(db)
-        usuario = await usuario_repo.buscar_por_telegram_id(telegram_user_id)
-        if usuario:
-            usuario_info = {
-                "nome": usuario.nome,
-                "numero_funcionario": usuario.numero_funcionario
-            }
-    
-    pdf_bytes = gerar_pdf_relatorio(turnos, inicio, fim, usuario_info)
-    
-    filename = f"relatorio_{ano}_{mes:02d}.pdf"
-    return Response(
-        content=pdf_bytes,
-        media_type="application/pdf",
-        headers={"Content-Disposition": f"attachment; filename={filename}"},
+    use_case = BaixarRelatorioPdfUseCase(
+        turno_repository=turno_repo,
+        usuario_repository=usuario_repo,
+        assinatura_repository=assinatura_repo,
+        relatorio_service=pdf_service
     )
+    
+    try:
+        pdf_bytes = await use_case.execute(telegram_user_id, inicio, fim)
+        if not pdf_bytes:
+             # Caso raro onde passou checks mas gerou None
+             raise HTTPException(status_code=500, detail="Erro ao gerar PDF")
+             
+        filename = f"relatorio_{ano}_{mes:02d}.pdf"
+        return Response(
+            content=pdf_bytes,
+            media_type="application/pdf",
+            headers={"Content-Disposition": f"attachment; filename={filename}"}
+        )
+    except HTTPException as e:
+        raise e
+    except Exception as e:
+        # Generic fallback
+        print(f"Error generating PDF: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
 
 
 # =============================================================================

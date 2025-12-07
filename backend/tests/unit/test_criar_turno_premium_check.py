@@ -25,9 +25,10 @@ def mock_session():
     return session
 
 @pytest.mark.asyncio
-async def test_caldav_sync_skipped_for_free_user(mock_repo, mock_assinatura_repo, mock_session, monkeypatch):
+async def test_caldav_sync_skipped_for_free_user(mock_repo, mock_assinatura_repo, mock_session):
     # Setup
-    use_case = CriarTurnoUseCase(mock_repo, mock_assinatura_repo, mock_session)
+    mock_calendar_service = MagicMock()
+    use_case = CriarTurnoUseCase(mock_repo, mock_assinatura_repo, mock_calendar_service, mock_session)
     
     # Mock Free Assinatura
     free_assinatura = Assinatura(
@@ -38,24 +39,21 @@ async def test_caldav_sync_skipped_for_free_user(mock_repo, mock_assinatura_repo
     )
     mock_assinatura_repo.get_by_user_id = AsyncMock(return_value=free_assinatura)
 
-    # Mock CalDAV client
-    mock_caldav = MagicMock()
-    monkeypatch.setattr("app.infrastructure.external.caldav_service.criar_ou_atualizar_evento", mock_caldav)
-    
     # Execute
     await use_case.execute(123, date(2025, 1, 1), time(8, 0), time(16, 0), "Hospital")
     
     # Assert
-    mock_caldav.assert_not_called()
+    mock_calendar_service.sync_event.assert_not_called()
     mock_repo.criar.assert_called_once()
 
 
 @pytest.mark.asyncio
-async def test_caldav_sync_called_for_pro_user(mock_repo, mock_assinatura_repo, mock_session, monkeypatch):
+async def test_caldav_sync_called_for_pro_user(mock_repo, mock_assinatura_repo, mock_session):
     # Setup
-    use_case = CriarTurnoUseCase(mock_repo, mock_assinatura_repo, mock_session)
+    mock_calendar_service = MagicMock()
+    use_case = CriarTurnoUseCase(mock_repo, mock_assinatura_repo, mock_calendar_service, mock_session)
     
-    # Mock Pro Assinatura
+     # Mock Pro Assinatura
     pro_assinatura = Assinatura(
         id=1, telegram_user_id=123, 
         plano=PlanoType.PRO, status=AssinaturaStatus.ACTIVE,
@@ -63,14 +61,10 @@ async def test_caldav_sync_called_for_pro_user(mock_repo, mock_assinatura_repo, 
         data_inicio=None, data_fim=None, criado_em=None, atualizado_em=None
     )
     mock_assinatura_repo.get_by_user_id = AsyncMock(return_value=pro_assinatura)
-
-    # Mock CalDAV client
-    mock_caldav = MagicMock()
-    monkeypatch.setattr("app.infrastructure.external.caldav_service.criar_ou_atualizar_evento", mock_caldav)
     
     # Execute
     await use_case.execute(123, date(2025, 1, 1), time(8, 0), time(16, 0), "Hospital")
     
     # Assert
-    mock_caldav.assert_called_once()
+    mock_calendar_service.sync_event.assert_called_once()
     mock_repo.criar.assert_called_once()
