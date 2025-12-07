@@ -1,4 +1,8 @@
-class LimiteTurnosExcedidoException(Exception):
+class FreemiumException(Exception):
+    """Exceção base para erros relacionados a limites do plano freemium."""
+    pass
+
+class LimiteTurnosExcedidoException(FreemiumException):
     """
     Exceção lançada quando um usuário tenta criar mais turnos do que seu plano permite.
     """

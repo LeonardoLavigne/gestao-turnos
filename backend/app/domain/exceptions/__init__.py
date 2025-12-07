@@ -1,0 +1,2 @@
+from .freemium_exception import LimiteTurnosExcedidoException, FreemiumException
+from .acesso_negado_exception import AcessoNegadoException

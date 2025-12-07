@@ -41,8 +41,8 @@ class BaixarRelatorioPdfUseCase:
         assinatura = await self.assinatura_repository.get_by_user_id(telegram_user_id)
         if not assinatura or assinatura.is_free:
             # Domain Exception seria ideal, mas para manter simples agora:
-            from fastapi import HTTPException
-            raise HTTPException(status_code=403, detail="Funcionalidade disponível apenas para usuários Premium.")
+            from app.domain.exceptions import AcessoNegadoException
+            raise AcessoNegadoException("Funcionalidade disponível apenas para usuários Premium.")
 
         # 2. Buscar Dados do Usuário
         usuario = await self.usuario_repository.buscar_por_telegram_id(telegram_user_id)

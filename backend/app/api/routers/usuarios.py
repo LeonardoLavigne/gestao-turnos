@@ -6,9 +6,13 @@ from app.infrastructure.database.session import get_db
 from app.presentation import schemas
 from app.infrastructure.database import models
 from app.infrastructure.repositories.sqlalchemy_usuario_repository import SqlAlchemyUsuarioRepository
-from app.infrastructure.repositories.sqlalchemy_assinatura_repository import SqlAlchemyAssinaturaRepository
 from app.application.use_cases.usuarios.criar_usuario import CriarUsuarioUseCase
 from app.application.use_cases.usuarios.atualizar_usuario import AtualizarUsuarioUseCase
+from app.api.deps import (
+    get_usuario_repo,
+    get_criar_usuario_use_case,
+    get_atualizar_usuario_use_case
+)
 
 router = APIRouter()
 
@@ -19,15 +23,16 @@ router = APIRouter()
 )
 async def get_usuario(
     telegram_user_id: int,
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_db), # Direct DB needed for eager load (custom query)
+    repo: SqlAlchemyUsuarioRepository = Depends(get_usuario_repo),
 ):
     """Busca um usuário pelo seu Telegram User ID."""
-    repo = SqlAlchemyUsuarioRepository(db)
     usuario = await repo.buscar_por_telegram_id(telegram_user_id)
     if not usuario:
         raise HTTPException(status_code=404, detail="Usuário não encontrado")
     
     # 🌟 Buscar assinatura para enriquecer resposta (eager loading manual)
+    # Mantendo isso aqui por enquanto, pois é lógica de apresentação/query específica
     stmt = select(models.Assinatura).where(
         models.Assinatura.telegram_user_id == telegram_user_id
     )
@@ -51,15 +56,12 @@ async def get_usuario(
 )
 async def criar_usuario(
     usuario_in: schemas.UsuarioCreate,
-    db: AsyncSession = Depends(get_db),
+    repo: SqlAlchemyUsuarioRepository = Depends(get_usuario_repo),
+    use_case: CriarUsuarioUseCase = Depends(get_criar_usuario_use_case),
 ):
     """Cria um novo usuário no sistema."""
-    usuario_repo = SqlAlchemyUsuarioRepository(db)
-    assinatura_repo = SqlAlchemyAssinaturaRepository(db)
-    use_case = CriarUsuarioUseCase(usuario_repo, assinatura_repo)
-
     # Check existence
-    existe = await usuario_repo.buscar_por_telegram_id(usuario_in.telegram_user_id)
+    existe = await repo.buscar_por_telegram_id(usuario_in.telegram_user_id)
     if existe:
         raise HTTPException(status_code=400, detail="Usuário já cadastrado")
     
@@ -75,12 +77,9 @@ async def criar_usuario(
 async def atualizar_usuario(
     telegram_user_id: int,
     usuario_in: schemas.UsuarioUpdate,
-    db: AsyncSession = Depends(get_db),
+    use_case: AtualizarUsuarioUseCase = Depends(get_atualizar_usuario_use_case),
 ):
     """Atualiza dados de um usuário existente."""
-    usuario_repo = SqlAlchemyUsuarioRepository(db)
-    use_case = AtualizarUsuarioUseCase(usuario_repo)
-
     usuario = await use_case.execute(telegram_user_id, usuario_in)
     if not usuario:
         raise HTTPException(status_code=404, detail="Usuário não encontrado")

@@ -46,9 +46,19 @@ app.include_router(webhook.router)
 app.include_router(health.router)
 app.include_router(pages.router)
 
-# ✅ Registrar middleware RLS
+# Registrar middleware RLS
 app.add_middleware(RLSMiddleware)
 app.add_middleware(InternalSecurityMiddleware) # Security Last (First to execute)
+
+from app.domain.exceptions import AcessoNegadoException
+
+@app.exception_handler(AcessoNegadoException)
+async def acesso_negado_handler(request: Request, exc: AcessoNegadoException):
+    return Response(
+        content=f'{{"detail": "{str(exc)}"}}',
+        status_code=403,
+        media_type="application/json"
+    )
 
 
 # =============================================================================
