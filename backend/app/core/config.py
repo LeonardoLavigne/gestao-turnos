@@ -31,6 +31,20 @@ class Settings(BaseSettings):
     internal_api_key: str
     secret_key: str = Field(default="CHANGE_ME_IN_PROD", validation_alias="SECRET_KEY")
     access_token_expire_minutes: int = 60 * 24 * 7 # 7 days
+    
+    # CORS
+    backend_cors_origins: List[str] = []
+
+    @field_validator("backend_cors_origins", mode="before")
+    @classmethod
+    def parse_cors_origins(cls, v):
+        if isinstance(v, str):
+            return [origin.strip() for origin in v.split(",") if origin.strip()]
+        if isinstance(v, list):
+            return v
+        if isinstance(v, (set, tuple)):
+            return list(v)
+        return []
 
     # CalDAV / Disroot
     caldav_url: str = ""

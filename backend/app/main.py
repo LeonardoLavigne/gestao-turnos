@@ -54,21 +54,17 @@ app.add_middleware(RLSMiddleware)
 app.add_middleware(InternalSecurityMiddleware) # Security Last (First to execute)
 
 # Configurar CORS (Deve ser o último adicionado para ser o PRIMEIRO a executar)
-origins = [
-    "http://localhost",
-    "http://localhost:3000",
-    "http://127.0.0.1",
-    "http://127.0.0.1:3000",
-    "http://0.0.0.0:3000",
-]
+from app.core.config import get_settings
+settings = get_settings()
 
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=origins,
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
+if settings.backend_cors_origins:
+    app.add_middleware(
+        CORSMiddleware,
+        allow_origins=settings.backend_cors_origins,
+        allow_credentials=True,
+        allow_methods=["*"],
+        allow_headers=["*"],
+    )
 
 from app.domain.exceptions import AcessoNegadoException
 

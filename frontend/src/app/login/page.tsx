@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
+import Cookies from 'js-cookie';
 import api from '@/lib/api';
 
 interface TelegramUser {
@@ -19,25 +20,31 @@ export default function LoginPage() {
     const [error, setError] = useState<string | null>(null);
     const [loading, setLoading] = useState(false);
 
+    const handleTelegramLogin = async (user: TelegramUser) => {
+        setLoading(true);
+        setError(null);
+        try {
+            const response = await api.post('/auth/login', user);
+            const { access_token } = response.data;
+
+            // Store in Cookie (expires in 7 days)
+            Cookies.set('access_token', access_token, { expires: 7, path: '/' });
+            // Keep localStorage for now for api.ts backward compatibility if needed,
+            // but we will update api.ts to read cookie too.
+            localStorage.setItem('access_token', access_token);
+            localStorage.setItem('user', JSON.stringify(response.data.user)); // Still useful for quick UI access
+
+            router.push('/dashboard');
+        } catch (err: any) {
+            console.error("Login failed", err);
+            setError("Falha na autenticação. Tente novamente.");
+            setLoading(false);
+        }
+    };
+
     useEffect(() => {
         // Definir callback global para o Widget
-        (window as any).onTelegramAuth = async (user: TelegramUser) => {
-            setLoading(true);
-            setError(null);
-            try {
-                const response = await api.post('/auth/login', user);
-                const { access_token } = response.data;
-
-                localStorage.setItem('access_token', access_token);
-                localStorage.setItem('user', JSON.stringify(response.data.user));
-
-                router.push('/dashboard');
-            } catch (err: any) {
-                console.error("Login failed", err);
-                setError("Falha na autenticação. Tente novamente.");
-                setLoading(false);
-            }
-        };
+        (window as any).onTelegramAuth = handleTelegramLogin;
 
         // Injetar script do Telegram
         const script = document.createElement('script');
