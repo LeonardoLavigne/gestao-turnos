@@ -1,6 +1,9 @@
 from fastapi import Depends, Request, HTTPException
+from fastapi.security import OAuth2PasswordBearer
 from sqlalchemy.ext.asyncio import AsyncSession
 from app.infrastructure.database.session import get_db
+from app.core.config import get_settings
+from app.core.security import verify_token
 
 # Repositories
 from app.infrastructure.repositories.sqlalchemy_turno_repository import SqlAlchemyTurnoRepository
@@ -22,15 +25,36 @@ from app.application.use_cases.usuarios.atualizar_usuario import AtualizarUsuari
 from app.application.use_cases.relatorios.gerar_relatorio import GerarRelatorioUseCase
 from app.application.use_cases.relatorios.baixar_relatorio import BaixarRelatorioPdfUseCase
 
-def get_current_user_id(request: Request) -> int:
-    """Extrai o ID do usuário do Telegram do request (via Middleware ou Header)."""
-    user_id = getattr(request.state, "telegram_user_id", None)
-    if not user_id:
+# Scheme para OpenAPI
+oauth2_scheme = OAuth2PasswordBearer(tokenUrl="auth/login", auto_error=False)
+
+def get_current_user_id(
+    request: Request, 
+    token: str | None = Depends(oauth2_scheme)
+) -> int:
+    """
+    Porteiro Bilingue:
+    1. Aceita Bot com X-Internal-Secret + X-Telegram-User-ID.
+    2. Aceita Web com Bearer Token (JWT).
+    """
+    settings = get_settings()
+
+    # 1. Estratégia BOT
+    secret = request.headers.get("X-Internal-Secret")
+    if secret == settings.internal_api_key:
         user_id_header = request.headers.get("X-Telegram-User-ID")
         if user_id_header:
             return int(user_id_header)
-        raise HTTPException(status_code=401, detail="X-Telegram-User-ID obrigatório")
-    return user_id
+
+    # 2. Estratégia WEB (JWT)
+    if token:
+        payload = verify_token(token)
+        if payload:
+            user_id = payload.get("sub")
+            if user_id:
+                return int(user_id)
+
+    raise HTTPException(status_code=401, detail="Não autenticado")
 
 # Repository Providers
 def get_turno_repo(db: AsyncSession = Depends(get_db)) -> SqlAlchemyTurnoRepository:

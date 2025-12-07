@@ -49,12 +49,14 @@ class InternalSecurityMiddleware(BaseHTTPMiddleware):
         path = request.url.path
         
         # 1. Whitelist de rotas públicas
+        # 1. Whitelist de rotas públicas
         if (
             path.startswith("/docs") or 
             path.startswith("/redoc") or 
             path.startswith("/openapi.json") or
             path.startswith("/health") or 
-            path.startswith("/webhook")
+            path.startswith("/webhook") or
+            path.startswith("/auth")
         ):
             return await call_next(request)
             
@@ -62,10 +64,16 @@ class InternalSecurityMiddleware(BaseHTTPMiddleware):
         settings = get_settings()
         secret = request.headers.get("X-Internal-Secret")
         
-        if not secret or not secrets.compare_digest(secret, settings.internal_api_key):
-            return JSONResponse(
-                status_code=403, 
-                content={"detail": "Forbidden: Invalid or missing Internal Secret"}
-            )
-            
-        return await call_next(request)
+        # 2a. Se tem secret válido, passa (Bot)
+        if secret and secrets.compare_digest(secret, settings.internal_api_key):
+             return await call_next(request)
+             
+        # 2b. Se tem Authorization header, passa (Web - validação real será no endpoint via deps)
+        if request.headers.get("Authorization"):
+            return await call_next(request)
+        
+        # 3. Bloquear se não tem nenhum dos dois
+        return JSONResponse(
+            status_code=403, 
+            content={"detail": "Forbidden: Invalid or missing Internal Secret"}
+        )

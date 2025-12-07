@@ -29,6 +29,8 @@ class Settings(BaseSettings):
     
     # Security
     internal_api_key: str
+    secret_key: str = Field(default="CHANGE_ME_IN_PROD", validation_alias="SECRET_KEY")
+    access_token_expire_minutes: int = 60 * 24 * 7 # 7 days
 
     # CalDAV / Disroot
     caldav_url: str = ""

@@ -11,7 +11,8 @@ from fastapi.responses import Response
 
 from app.infrastructure.middleware import RLSMiddleware, InternalSecurityMiddleware
 from app.api import webhook, health, pages
-from app.api.routers import turnos, usuarios, relatorios, assinaturas
+from fastapi.middleware.cors import CORSMiddleware
+from app.api.routers import turnos, usuarios, relatorios, assinaturas, auth
 from app.infrastructure.logger import setup_logging
 from app.domain.exceptions.freemium_exception import LimiteTurnosExcedidoException
 
@@ -31,6 +32,8 @@ app = FastAPI(
     lifespan=lifespan,
 )
 
+
+
 @app.exception_handler(LimiteTurnosExcedidoException)
 async def freemium_exception_handler(request: Request, exc: LimiteTurnosExcedidoException):
     return Response(
@@ -49,6 +52,23 @@ app.include_router(pages.router)
 # Registrar middleware RLS
 app.add_middleware(RLSMiddleware)
 app.add_middleware(InternalSecurityMiddleware) # Security Last (First to execute)
+
+# Configurar CORS (Deve ser o último adicionado para ser o PRIMEIRO a executar)
+origins = [
+    "http://localhost",
+    "http://localhost:3000",
+    "http://127.0.0.1",
+    "http://127.0.0.1:3000",
+    "http://0.0.0.0:3000",
+]
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=origins,
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 from app.domain.exceptions import AcessoNegadoException
 
@@ -70,3 +90,4 @@ app.include_router(turnos.router, prefix="/turnos", tags=["Turnos"])
 app.include_router(usuarios.router, prefix="/usuarios", tags=["Usuários"])
 app.include_router(relatorios.router, prefix="/relatorios", tags=["Relatórios"])
 app.include_router(assinaturas.router, prefix="/assinaturas", tags=["Assinaturas"])
+app.include_router(auth.router, prefix="/auth", tags=["Autenticação"])

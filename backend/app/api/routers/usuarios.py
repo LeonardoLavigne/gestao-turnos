@@ -11,10 +11,26 @@ from app.application.use_cases.usuarios.atualizar_usuario import AtualizarUsuari
 from app.api.deps import (
     get_usuario_repo,
     get_criar_usuario_use_case,
-    get_atualizar_usuario_use_case
+    get_atualizar_usuario_use_case,
+    get_current_user_id,
 )
 
 router = APIRouter()
+
+@router.get(
+    "/me",
+    response_model=schemas.UsuarioRead,
+    summary="Buscar perfil do usuário logado",
+)
+async def get_me(
+    current_user_id: int = Depends(get_current_user_id),
+    db: AsyncSession = Depends(get_db),
+    repo: SqlAlchemyUsuarioRepository = Depends(get_usuario_repo),
+):
+    """Busca os dados do próprio usuário autenticado (via Token ou Header)."""
+    # Reutiliza a lógica de busca por ID
+    return await get_usuario(current_user_id, db, repo)
+
 
 @router.get(
     "/{telegram_user_id}",
