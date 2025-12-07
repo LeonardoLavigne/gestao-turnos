@@ -11,6 +11,7 @@ from fastapi import Request
 from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.responses import JSONResponse
 from app.config import get_settings
+import secrets
 
 
 class RLSMiddleware(BaseHTTPMiddleware):
@@ -61,7 +62,7 @@ class InternalSecurityMiddleware(BaseHTTPMiddleware):
         settings = get_settings()
         secret = request.headers.get("X-Internal-Secret")
         
-        if not secret or secret != settings.internal_api_key:
+        if not secret or not secrets.compare_digest(secret, settings.internal_api_key):
             return JSONResponse(
                 status_code=403, 
                 content={"detail": "Forbidden: Invalid or missing Internal Secret"}
