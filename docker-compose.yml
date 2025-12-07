@@ -34,6 +34,7 @@ services:
     environment:
       - APP_TIMEZONE=${APP_TIMEZONE:-America/Sao_Paulo}
       - DATABASE_URL=${DATABASE_URL:-postgresql+psycopg://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-postgres}@postgres:5432/${POSTGRES_DB:-gestao_turnos}}
+      - PYTHONPATH=/app
     volumes:
       - ./backend/data:/app/data
       - ./backend/app:/app/app:rw
@@ -59,6 +60,7 @@ services:
       - .env
     environment:
       - API_BASE_URL=http://backend:8000
+      - PYTHONPATH=/app
     volumes:
       - ./bot/src:/app/src:rw
       - ./bot/tests:/app/tests:rw
