@@ -77,7 +77,10 @@ async def perfil_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
     await update.message.reply_text(
         f"👤 **Seu Perfil**\n\n"
         f"📝 Nome: *{perfil['nome']}*\n"
-        f"🆔 Número: *{perfil['numero_funcionario']}*\n"
+        f"🆔 Número: *{perfil['numero_funcionario']}*\n\n"
+        f"💎 **Assinatura**\n"
+        f"Status: `{perfil.get('assinatura_status', 'inactive')}`\n"
+        f"Plano: `{perfil.get('assinatura_plano', 'free')}`\n"
         f"📅 Cadastrado em: {perfil['criado_em'][:10]}",
         parse_mode="Markdown"
     )

@@ -28,8 +28,15 @@ async def test_subscription_lifecycle():
     stripe_subscription_id = "sub_lifecycle_456"
     
     # Usar sessão de superuser para todo o teste
-    # Usando localhost pois estamos rodando testes localmente (ver conftest.py para lógica similar)
-    superuser_url = "postgresql+psycopg://postgres:postgres@localhost:5432/gestao_turnos"
+    # Usando DATABASE_URL do ambiente (que aponta para 'postgres' no Docker) ou fallback
+    from app.config import get_settings
+    settings = get_settings()
+    superuser_url = settings.database_url
+    if not superuser_url:
+        superuser_url = "postgresql+psycopg://postgres:postgres@localhost:5432/gestao_turnos"
+    elif superuser_url.startswith("postgresql://"):
+        superuser_url = superuser_url.replace("postgresql://", "postgresql+psycopg://")
+        
     engine = create_async_engine(superuser_url)
     Session = async_sessionmaker(bind=engine, class_=AsyncSession, expire_on_commit=False)
     

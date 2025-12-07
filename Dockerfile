@@ -42,9 +42,14 @@ RUN groupadd -g ${GROUP_ID} appuser && \
 COPY app ./app
 COPY alembic.ini ./
 
+
 # Copiar e configurar entrypoint
 COPY entrypoint.sh /entrypoint.sh
 RUN chmod +x /entrypoint.sh
+
+# ✅ Instalar dependências de desenv (incluindo pytest)
+RUN uv sync --frozen
+
 
 # Criar pasta data e ajustar permissões
 RUN mkdir -p ${APP_HOME}/data && \

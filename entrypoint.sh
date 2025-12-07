@@ -20,5 +20,10 @@ else
     echo "⚠️  alembic.ini não encontrado, pulando migrations..."
 fi
 
-echo "🚀 Iniciando aplicação..."
-exec uv run python -m app.run_all
+if [ $# -eq 0 ]; then
+    echo "🚀 Iniciando aplicação..."
+    exec uv run python -m app.run_all
+else
+    echo "🔧 Executando comando customizado: $@"
+    exec "$@"
+fi

@@ -17,6 +17,7 @@ from .reports import gerar_pdf_relatorio
 from app.infrastructure.middleware import RLSMiddleware
 from app.api import webhook, health, pages
 from app.infrastructure.logger import setup_logging
+from sqlalchemy import select
 
 # Configurar logs na inicialização
 setup_logging()
@@ -226,7 +227,21 @@ async def get_usuario(
     usuario = await crud.get_usuario_by_telegram_id(db, telegram_user_id)
     if not usuario:
         raise HTTPException(status_code=404, detail="Usuário não encontrado")
-    return usuario
+    
+    # 🌟 Buscar assinatura para enriquecer resposta (eager loading manual)
+    stmt = select(models.Assinatura).where(
+        models.Assinatura.telegram_user_id == telegram_user_id
+    )
+    result = await db.execute(stmt)
+    assinatura = result.scalar()
+    
+    # Converter para schema e preencher campos extras
+    usuario_read = schemas.UsuarioRead.model_validate(usuario)
+    if assinatura:
+        usuario_read.assinatura_status = assinatura.status
+        usuario_read.assinatura_plano = assinatura.plano
+    
+    return usuario_read
 
 
 @app.post(

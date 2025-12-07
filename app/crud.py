@@ -1,4 +1,4 @@
-from datetime import datetime, date, time, timedelta
+from datetime import datetime, date, time, timedelta, UTC
 from typing import Iterable, Sequence
 
 from sqlalchemy import select, func
@@ -176,6 +176,22 @@ async def criar_usuario(db: AsyncSession, payload: schemas.UsuarioCreate) -> mod
         numero_funcionario=payload.numero_funcionario,
     )
     db.add(usuario)
+    
+    # 🌟 Criar assinatura TRIAL de 14 dias
+    agora = datetime.now(UTC)
+    fim_trial = agora + timedelta(days=14)
+    
+    assinatura = models.Assinatura(
+        telegram_user_id=payload.telegram_user_id,
+        stripe_customer_id=f"trial_{payload.telegram_user_id}",
+        stripe_subscription_id=None,
+        status="trialing",
+        plano="pro",
+        data_inicio=agora,
+        data_fim=fim_trial,
+    )
+    db.add(assinatura)
+    
     await db.commit()
     await db.refresh(usuario)
     return usuario

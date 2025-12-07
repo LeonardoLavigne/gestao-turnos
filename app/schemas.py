@@ -101,6 +101,8 @@ class UsuarioUpdate(BaseModel):
 class UsuarioRead(UsuarioBase):
     id: int
     telegram_user_id: int
+    assinatura_status: Optional[str] = "inactive"
+    assinatura_plano: Optional[str] = "free"
     criado_em: datetime
     atualizado_em: datetime
     model_config = ConfigDict(from_attributes=True)
