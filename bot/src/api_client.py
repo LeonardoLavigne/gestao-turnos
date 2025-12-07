@@ -14,6 +14,7 @@ logger = logging.getLogger(__name__)
 
 # Base URL for API calls
 API_BASE_URL = os.getenv("API_BASE_URL", "http://backend:8000")
+INTERNAL_API_KEY = get_settings().internal_api_key
 
 
 class TurnoAPIClient:
@@ -54,7 +55,10 @@ class TurnoAPIClient:
                     "tipo": tipo,
                     "origem": "telegram",
                 },
-                headers={"X-Telegram-User-ID": str(telegram_user_id)},
+                headers={
+                    "X-Telegram-User-ID": str(telegram_user_id),
+                    "X-Internal-Secret": INTERNAL_API_KEY,
+                },
                 timeout=self.timeout,
             )
             resp.raise_for_status()
@@ -70,7 +74,10 @@ class TurnoAPIClient:
             resp = await client.get(
                 f"{self.base_url}/turnos/recentes",
                 params={"limit": limit},
-                headers={"X-Telegram-User-ID": str(telegram_user_id)},
+                headers={
+                    "X-Telegram-User-ID": str(telegram_user_id),
+                    "X-Internal-Secret": INTERNAL_API_KEY,
+                },
                 timeout=self.timeout,
             )
             resp.raise_for_status()
@@ -90,7 +97,10 @@ class TurnoAPIClient:
         async with httpx.AsyncClient() as client:
             resp = await client.delete(
                 f"{self.base_url}/turnos/{turno_id}",
-                headers={"X-Telegram-User-ID": str(telegram_user_id)},
+                headers={
+                    "X-Telegram-User-ID": str(telegram_user_id),
+                    "X-Internal-Secret": INTERNAL_API_KEY,
+                },
                 timeout=self.timeout,
             )
             if resp.status_code == 404:
@@ -117,7 +127,10 @@ class RelatorioAPIClient:
             resp = await client.get(
                 f"{self.base_url}/relatorios/semana",
                 params={"ano": ano, "semana": semana},
-                headers={"X-Telegram-User-ID": str(telegram_user_id)},
+                headers={
+                    "X-Telegram-User-ID": str(telegram_user_id),
+                    "X-Internal-Secret": INTERNAL_API_KEY,
+                },
                 timeout=self.timeout,
             )
             resp.raise_for_status()
@@ -134,7 +147,10 @@ class RelatorioAPIClient:
             resp = await client.get(
                 f"{self.base_url}/relatorios/mes",
                 params={"ano": ano, "mes": mes},
-                headers={"X-Telegram-User-ID": str(telegram_user_id)},
+                headers={
+                    "X-Telegram-User-ID": str(telegram_user_id),
+                    "X-Internal-Secret": INTERNAL_API_KEY,
+                },
                 timeout=self.timeout,
             )
             resp.raise_for_status()
@@ -154,7 +170,10 @@ class RelatorioAPIClient:
                     "inicio": inicio.isoformat(),
                     "fim": fim.isoformat(),
                 },
-                headers={"X-Telegram-User-ID": str(telegram_user_id)},
+                headers={
+                    "X-Telegram-User-ID": str(telegram_user_id),
+                    "X-Internal-Secret": INTERNAL_API_KEY,
+                },
                 timeout=self.timeout,
             )
             resp.raise_for_status()
@@ -175,7 +194,10 @@ class RelatorioAPIClient:
                     "mes": mes,
                     "telegram_user_id": telegram_user_id,
                 },
-                headers={"X-Telegram-User-ID": str(telegram_user_id)},
+                headers={
+                    "X-Telegram-User-ID": str(telegram_user_id),
+                    "X-Internal-Secret": INTERNAL_API_KEY,
+                },
                 timeout=30.0,  # PDF pode demorar mais
             )
             resp.raise_for_status()
@@ -200,6 +222,7 @@ class UsuarioAPIClient:
             async with httpx.AsyncClient() as client:
                 resp = await client.get(
                     f"{self.base_url}/usuarios/{telegram_user_id}",
+                    headers={"X-Internal-Secret": INTERNAL_API_KEY},
                     timeout=self.timeout,
                 )
                 if resp.status_code == 200:
@@ -227,6 +250,7 @@ class UsuarioAPIClient:
         async with httpx.AsyncClient() as client:
             resp = await client.post(
                 f"{self.base_url}/usuarios",
+                headers={"X-Internal-Secret": INTERNAL_API_KEY},
                 json={
                     "telegram_user_id": telegram_user_id,
                     "nome": nome,
@@ -247,6 +271,7 @@ class UsuarioAPIClient:
         async with httpx.AsyncClient() as client:
             resp = await client.post(
                 f"{self.base_url}/assinaturas/checkout",
+                headers={"X-Internal-Secret": INTERNAL_API_KEY},
                 json={"telegram_user_id": telegram_user_id},
                 timeout=self.timeout,
             )

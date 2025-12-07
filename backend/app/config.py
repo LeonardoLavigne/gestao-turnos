@@ -23,6 +23,9 @@ class Settings(BaseSettings):
     # Telegram
     telegram_bot_token: str = ""
     telegram_allowed_users: List[int] = []
+    
+    # Security
+    internal_api_key: str
 
     # CalDAV / Disroot
     caldav_url: str = ""

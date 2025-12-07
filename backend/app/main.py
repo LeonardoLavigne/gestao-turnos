@@ -14,7 +14,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from .database import Base, engine, get_db
 from . import crud, schemas, models
 from .reports import gerar_pdf_relatorio
-from app.infrastructure.middleware import RLSMiddleware
+from app.infrastructure.middleware import RLSMiddleware, InternalSecurityMiddleware
 from app.api import webhook, health, pages
 from app.infrastructure.logger import setup_logging
 from sqlalchemy import select
@@ -37,6 +37,7 @@ app.include_router(pages.router)
 
 # ✅ Registrar middleware RLS
 app.add_middleware(RLSMiddleware)
+app.add_middleware(InternalSecurityMiddleware) # Security Last (First to execute)
 
 
 # =============================================================================

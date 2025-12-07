@@ -9,6 +9,8 @@ garantindo que SET LOCAL seja executado na mesma transação das queries.
 """
 from fastapi import Request
 from starlette.middleware.base import BaseHTTPMiddleware
+from starlette.responses import JSONResponse
+from app.config import get_settings
 
 
 class RLSMiddleware(BaseHTTPMiddleware):
@@ -34,3 +36,35 @@ class RLSMiddleware(BaseHTTPMiddleware):
         # Processar request
         response = await call_next(request)
         return response
+
+
+class InternalSecurityMiddleware(BaseHTTPMiddleware):
+    """
+    Middleware que verifica o Shared Secret (Internal API Key)
+    para garantir que requisições venham do Bot ou fontes confiáveis.
+    """
+    
+    async def dispatch(self, request: Request, call_next):
+        path = request.url.path
+        
+        # 1. Whitelist de rotas públicas
+        if (
+            path.startswith("/docs") or 
+            path.startswith("/redoc") or 
+            path.startswith("/openapi.json") or
+            path.startswith("/health") or 
+            path.startswith("/webhook")
+        ):
+            return await call_next(request)
+            
+        # 2. Verificar Shared Secret
+        settings = get_settings()
+        secret = request.headers.get("X-Internal-Secret")
+        
+        if not secret or secret != settings.internal_api_key:
+            return JSONResponse(
+                status_code=403, 
+                content={"detail": "Forbidden: Invalid or missing Internal Secret"}
+            )
+            
+        return await call_next(request)
