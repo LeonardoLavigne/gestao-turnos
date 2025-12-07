@@ -76,79 +76,91 @@ class TestNomeTipo:
 
 
 @pytest.mark.asyncio
-class TestCriarTurno:
-    """Testes para criar_turno."""
-    
-    async def test_criar_turno_simples(self, db_session_rls):
-        """Criar turno básico sem tipo."""
+class TestTurnoRepository:
+    """Testes para SqlAlchemyTurnoRepository (Persistência)."""
+
+    async def test_criar_turno_persistence(self, db_session_rls):
+        """Testa a persistência básica de um turno via repositório."""
+        from app.infrastructure.repositories.sqlalchemy_turno_repository import SqlAlchemyTurnoRepository
+        from app.domain.entities.turno import Turno
+        from app.models import Turno as TurnoModel
+
         db = db_session_rls
+        repo = SqlAlchemyTurnoRepository(db)
         
+        # User ID for RLS
+        user_id = 999
         await db.execute(text("BEGIN"))
-        await db.execute(text("SELECT set_config('app.current_user_id', '999', true)"))
+        await db.execute(text(f"SELECT set_config('app.current_user_id', '{user_id}', true)"))
         
-        payload = schemas.TurnoCreate(
+        # Prepare Entity (Logic like duration calc is done in UseCase, here we manually set it)
+        turno_entity = Turno(
+            id=None,
+            telegram_user_id=user_id,
             data_referencia=date(2024, 6, 15),
             hora_inicio=time(8, 0),
             hora_fim=time(16, 0),
+            duracao_minutos=480,
+            tipo="Trabalho",
+            descricao_opcional="Teste Repo",
+            event_uid=None
         )
+
+        saved_turno = await repo.criar(turno_entity)
         
-        turno = await crud.criar_turno(db, payload)
+        assert saved_turno.id is not None
+        assert saved_turno.telegram_user_id == user_id
         
-        assert turno.id is not None
-        assert turno.telegram_user_id == 999
-        assert turno.data_referencia == date(2024, 6, 15)
-        assert turno.hora_inicio == time(8, 0)
-        assert turno.hora_fim == time(16, 0)
-        assert turno.duracao_minutos == 480
+        # Verify in DB
+        stmt = text(f"SELECT count(*) FROM turnos WHERE id = {saved_turno.id}")
+        result = await db.scalar(stmt)
+        assert result == 1
         
         # Cleanup
-        await db.execute(text("SELECT set_config('app.current_user_id', '999', true)"))
-        await db.execute(text(f"DELETE FROM turnos WHERE id = {turno.id}"))
+        await db.execute(text(f"DELETE FROM turnos WHERE id = {saved_turno.id}"))
         await db.commit()
-    
-    async def test_criar_turno_com_tipo_livre(self, db_session_rls):
-        """Criar turno com tipo que não existe no banco (tipo_livre)."""
+
+    async def test_contar_por_periodo(self, db_session_rls):
+        """Testa o método contar_por_periodo."""
+        from app.infrastructure.repositories.sqlalchemy_turno_repository import SqlAlchemyTurnoRepository
+        from app.domain.entities.turno import Turno
+
         db = db_session_rls
+        repo = SqlAlchemyTurnoRepository(db)
         
+        user_id = 888
         await db.execute(text("BEGIN"))
-        await db.execute(text("SELECT set_config('app.current_user_id', '999', true)"))
-        
-        payload = schemas.TurnoCreate(
-            data_referencia=date(2024, 6, 16),
-            hora_inicio=time(9, 0),
-            hora_fim=time(17, 0),
-            tipo="TipoNaoExiste",
+        await db.execute(text(f"SELECT set_config('app.current_user_id', '{user_id}', true)"))
+
+        # Create 2 shifts in the period
+        t1 = Turno(
+            id=None, telegram_user_id=user_id,
+            data_referencia=date(2024, 7, 1),
+            hora_inicio=time(8, 0), hora_fim=time(12, 0), duracao_minutos=240,
+            tipo="T1", descricao_opcional=None, event_uid=None
+        )
+        t2 = Turno(
+            id=None, telegram_user_id=user_id,
+            data_referencia=date(2024, 7, 2),
+            hora_inicio=time(8, 0), hora_fim=time(12, 0), duracao_minutos=240,
+            tipo="T2", descricao_opcional=None, event_uid=None
         )
         
-        turno = await crud.criar_turno(db, payload)
+        saved_t1 = await repo.criar(t1)
+        saved_t2 = await repo.criar(t2)
+        await db.flush()
+
+        # Count
+        count = await repo.contar_por_periodo(user_id, date(2024, 7, 1), date(2024, 7, 31))
+        assert count == 2
         
-        assert turno.tipo_livre == "TipoNaoExiste"
-        assert turno.tipo is None
-        assert turno.telegram_user_id == 999
-        
+        # Count outside
+        count_out = await repo.contar_por_periodo(user_id, date(2024, 8, 1), date(2024, 8, 31))
+        assert count_out == 0
+
         # Cleanup
-        await db.execute(text("SELECT set_config('app.current_user_id', '999', true)"))
-        await db.execute(text(f"DELETE FROM turnos WHERE id = {turno.id}"))
+        await db.execute(text(f"DELETE FROM turnos WHERE telegram_user_id = {user_id}"))
         await db.commit()
-    
-    async def test_criar_turno_sem_user_id_erro(self, db_session_rls):
-        """Criar turno sem current_user_id setado deve dar erro."""
-        db = db_session_rls
-        
-        # Não seta current_user_id
-        await db.execute(text("BEGIN"))
-        
-        payload = schemas.TurnoCreate(
-            data_referencia=date(2024, 6, 17),
-            hora_inicio=time(8, 0),
-            hora_fim=time(16, 0),
-        )
-        
-        import pytest
-        with pytest.raises(ValueError, match="telegram_user_id não definido"):
-            await crud.criar_turno(db, payload)
-        
-        await db.rollback()
 
 
 class TestGerarRelatorioPeriodo:
