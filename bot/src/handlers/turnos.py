@@ -14,6 +14,7 @@ from src.decorators import rate_limit, subscription_required
 from src.parsers import parse_linhas_turno
 from src.api_client import turno_client, usuario_client
 from src.utils import usuario_autorizado
+import httpx
 
 logger = logging.getLogger(__name__)
 
@@ -69,10 +70,22 @@ async def registrar_turno_msg(update: Update, context: ContextTypes.DEFAULT_TYPE
                 hora_fim=parsed.hora_fim,
                 telegram_user_id=user.id,
             )
+        except httpx.HTTPStatusError as e:
+            if e.response.status_code == 403:
+                mensagens_resposta.append(
+                    f"⚠️ **Limite de turnos atingido!** ({parsed.data_referencia})\n"
+                    "O plano Free permite apenas 30 turnos recentes.\n"
+                    "Use /assinar para liberar turnos ilimitados."
+                )
+            elif e.response.status_code == 422:
+                 mensagens_resposta.append(f"❌ Erro de validação: Verifique os dados enviados.")
+            else:
+                 mensagens_resposta.append(f"❌ Erro ao registrar: {e.response.text}")
+            continue
         except Exception as exc:
             mensagens_resposta.append(
                 f"Linha {idx} ({parsed.tipo} {parsed.hora_inicio}-{parsed.hora_fim} "
-                f"{parsed.data_referencia}): erro ao registrar: {exc}"
+                f"{parsed.data_referencia}): erro desconhecido: {exc}"
             )
             continue
 

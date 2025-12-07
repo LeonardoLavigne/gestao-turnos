@@ -54,8 +54,13 @@ def subscription_required(func):
     Permite comandos básicos (/start, /help, /assinar) sem assinatura.
     """
     @wraps(func)
+    @wraps(func)
     async def wrapper(update: Update, context: ContextTypes.DEFAULT_TYPE, *args, **kwargs):
-        user_id = update.effective_user.id
+        user = update.effective_user
+        if not user:
+             return
+             
+        user_id = user.id
         
         # Permitir comandos básicos sem assinatura
         if update.message and update.message.text:
@@ -63,13 +68,26 @@ def subscription_required(func):
             if text.startswith(('/start', '/help', '/assinar', '/ajuda')):
                 return await func(update, context, *args, **kwargs)
 
-        # Verificar assinatura via API
-        usuario = await usuario_client.buscar_usuario(user_id)
+        # Verificar Cache (5 minutos)
+        now = time.time()
+        cached_status = context.user_data.get("sub_status")
+        cached_time = context.user_data.get("sub_check_time", 0)
         
-        # Se usuário não existe ou status não é active/trialing
-        # Nota: UsuarioAPIClient.buscar_usuario retorna None se falhar ou 404
-        status = usuario.get("assinatura_status") if usuario else None
-        
+        if cached_status and (now - cached_time < 300):
+            status = cached_status
+        else:
+            # Verificar assinatura via API
+            try:
+                usuario = await usuario_client.buscar_usuario(user_id)
+                status = usuario.get("assinatura_status") if usuario else None
+                
+                # Atualizar Cache
+                context.user_data["sub_status"] = status
+                context.user_data["sub_check_time"] = now
+            except Exception:
+                logger.error(f"Erro ao verificar assinatura para {user_id}")
+                status = None
+
         if status not in ("active", "trialing"):
             await update.message.reply_text(
                 "🔒 **Funcionalidade Exclusiva para Assinantes**\n\n"

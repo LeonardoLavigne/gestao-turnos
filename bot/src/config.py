@@ -14,6 +14,12 @@ class Settings(BaseSettings):
     base_url: str = "http://localhost:8000"
     internal_api_key: str
 
+    # Execution Mode (polling / webhook)
+    execution_mode: str = Field(default="polling", validation_alias="MODE")
+    host: str = "0.0.0.0"
+    port: int = 8000
+    webhook_url: Optional[str] = None
+
     # Telegram
     telegram_bot_token: str = ""
     telegram_allowed_users: List[int] = []

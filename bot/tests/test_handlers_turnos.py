@@ -21,6 +21,7 @@ async def test_registrar_turno_msg_success(mock_deps, monkeypatch):
     update.message.text = "Hospital 08:00 as 16:00"
     update.message.reply_text = AsyncMock()
     context = MagicMock()
+    context.user_data = {}
 
     # Mock buscar_usuario (user exists AND has active subscription)
     user_mock = {"id": 1, "assinatura_status": "active"}
@@ -49,6 +50,7 @@ async def test_registrar_turno_msg_parse_error(mock_deps, monkeypatch):
     update.message.text = "Texto invalido"
     update.message.reply_text = AsyncMock()
     context = MagicMock()
+    context.user_data = {}
     
     # Mock user authorized and subscribed
     user_mock = {"id": 1, "assinatura_status": "active"}
