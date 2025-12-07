@@ -35,7 +35,7 @@ docs/
 !README.md
 
 # Tests
-tests/
+# tests/ # Allowing tests for dev stage
 .pytest_cache/
 htmlcov/
 .coverage

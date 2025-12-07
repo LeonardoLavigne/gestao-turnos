@@ -1,0 +1,48 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+*.egg-info/
+dist/
+build/
+
+# Environments
+.env
+.venv/
+venv/
+ENV/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Git
+.git/
+.gitignore
+
+# Project specific
+data/
+*.db
+*.db-journal
+
+# Documentation
+docs/
+*.md
+!README.md
+
+# Tests
+# tests/ # Allowing tests for dev stage
+.pytest_cache/
+htmlcov/
+.coverage
+
+# Antigravity brain
+.gemini/
+
+# Misc
+.DS_Store
+Thumbs.db

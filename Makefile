@@ -1,8 +1,8 @@
-# Makefile para gestão de turnos
+# Makefile para gestão de turnos (Backend + Bot)
 
-.PHONY: help build up down restart logs shell alembic-init alembic-migrate \
+.PHONY: help build up down restart logs shell-backend shell-bot alembic-init alembic-migrate \
         alembic-upgrade alembic-downgrade alembic-history alembic-current \
-        rebuild fresh check-permissions dev test lint format add sync
+        rebuild fresh check-permissions test-backend test-bot
 
 # ✅ Detectar UID/GID automaticamente
 export USER_ID := $(shell id -u)
@@ -16,18 +16,19 @@ help: ## Mostrar ajuda
 	@echo "  make down               - Stop containers"
 	@echo "  make restart            - Restart containers"
 	@echo "  make logs               - Ver logs (follow)"
-	@echo "  make shell              - Shell no container"
+	@echo "  make shell-backend      - Shell no container backend"
+	@echo "  make shell-bot          - Shell no container bot"
 	@echo ""
-	@echo "Alembic (Migrations):"
+	@echo "Alembic (Migrations - rodadas no backend):"
 	@echo "  make alembic-init       - Inicializar Alembic (primeira vez)"
 	@echo "  make alembic-migrate MSG='msg' - Criar nova migration"
 	@echo "  make alembic-upgrade    - Aplicar todas migrations"
 	@echo "  make alembic-downgrade  - Rollback última migration"
 	@echo "  make alembic-history    - Ver histórico de migrations"
 	@echo ""
-	@echo "Atalhos:"
-	@echo "  make rebuild            - Down + Build + Up"
-	@echo "  make fresh              - Down + Clean volumes + Build + Up"
+	@echo "Testes:"
+	@echo "  make test-backend       - Rodar testes do backend"
+	@echo "  make test-bot           - Rodar testes do bot"
 	@echo ""
 	@echo "ℹ️  Usando USER_ID=$(USER_ID) GROUP_ID=$(GROUP_ID)"
 
@@ -41,23 +42,24 @@ up: ## Start containers
 
 down: ## Stop containers
 	@echo "🛑 Stopping containers..."
-	docker compose down
+	docker compose down --remove-orphans
 
 restart: down up ## Restart containers
 
 logs: ## Ver logs (follow)
 	docker compose logs -f
 
-shell: ## Shell no container
-	docker compose exec gestao-turnos bash
+shell-backend: ## Shell no container backend
+	docker compose exec backend bash
 
-# Comandos Alembic
+shell-bot: ## Shell no container bot
+	docker compose exec bot bash
+
+# Comandos Alembic (Backend)
 alembic-init: ## Inicializar Alembic (primeira vez)
 	@echo "🔧 Inicializando Alembic..."
-	@mkdir -p migrations
-	docker compose exec gestao-turnos uv run alembic init migrations
+	docker compose exec backend uv run alembic init migrations
 	@echo "✅ Alembic inicializado!"
-	@echo "⚠️  Edite migrations/env.py para configurar target_metadata"
 
 alembic-migrate: ## Criar migration (uso: make alembic-migrate MSG='nome da migration')
 	@if [ -z "$(MSG)" ]; then \
@@ -65,24 +67,31 @@ alembic-migrate: ## Criar migration (uso: make alembic-migrate MSG='nome da migr
 		exit 1; \
 	fi
 	@echo "📝 Criando migration: $(MSG)..."
-	docker compose exec gestao-turnos uv run alembic revision --autogenerate -m "$(MSG)"
+	docker compose exec backend uv run alembic revision --autogenerate -m "$(MSG)"
 	@echo "✅ Migration criada! Revise o arquivo antes de aplicar."
 
 alembic-upgrade: ## Aplicar migrations
 	@echo "⬆️  Aplicando migrations..."
-	docker compose exec gestao-turnos uv run alembic upgrade head
+	docker compose exec backend uv run alembic upgrade head
 	@echo "✅ Migrations aplicadas!"
 
 alembic-downgrade: ## Rollback última migration
 	@echo "⬇️  Fazendo rollback..."
-	docker compose exec gestao-turnos uv run alembic downgrade -1
+	docker compose exec backend uv run alembic downgrade -1
 	@echo "✅ Rollback concluído!"
 
 alembic-history: ## Ver histórico de migrations
-	docker compose exec gestao-turnos uv run alembic history
+	docker compose exec backend uv run alembic history
 
 alembic-current: ## Ver migration atual
-	docker compose exec gestao-turnos uv run alembic current
+	docker compose exec backend uv run alembic current
+
+# Testes
+test-backend: ## Rodar testes do backend
+	docker compose exec backend uv run pytest tests/ -v
+
+test-bot: ## Rodar testes do bot
+	docker compose exec bot uv run pytest tests/ -v
 
 # Atalhos úteis
 rebuild: down build up ## Down + Build + Up
@@ -96,31 +105,9 @@ fresh: down ## Down + Clean volumes + Build + Up
 	$(MAKE) up
 	@echo "✅ Fresh start completo!"
 
-# Verificar permissões
+# Verificar permissões (Adaptação para nova estrutura)
 check-permissions: ## Verificar permissões das pastas
 	@echo "📁 Verificando permissões..."
-	@ls -la migrations/ 2>/dev/null || echo "⚠️  Pasta migrations/ não existe"
-	@ls -la data/ 2>/dev/null || echo "⚠️  Pasta data/ não existe"
+	@ls -la backend/migrations/ 2>/dev/null || echo "⚠️  Pasta backend/migrations/ não existe"
+	@ls -la backend/data/ 2>/dev/null || echo "⚠️  Pasta backend/data/ não existe"
 
-# Comandos locais com uv (sem Docker)
-dev: ## Rodar app localmente com uv
-	uv run python -m app.run_all
-
-test: ## Rodar testes com uv
-	uv run pytest tests/ -v
-
-lint: ## Lint com ruff
-	uv run ruff check app/
-
-format: ## Format com ruff
-	uv run ruff format app/
-
-add: ## Adicionar dependência (uso: make add PKG=nome_do_pacote)
-	@if [ -z "$(PKG)" ]; then \
-		echo "❌ Erro: Use 'make add PKG=nome_do_pacote'"; \
-		exit 1; \
-	fi
-	uv add $(PKG)
-
-sync: ## Sincronizar ambiente virtual
-	uv sync
