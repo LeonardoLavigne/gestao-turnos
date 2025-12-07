@@ -18,7 +18,7 @@ class TurnoRepository(ABC):
     """
 
     @abstractmethod
-    def criar(self, turno: Turno) -> Turno:
+    async def criar(self, turno: Turno) -> Turno:
         """
         Persiste um novo turno.
         
@@ -31,7 +31,7 @@ class TurnoRepository(ABC):
         pass
 
     @abstractmethod
-    def buscar_por_id(self, turno_id: int, telegram_user_id: int) -> Optional[Turno]:
+    async def buscar_por_id(self, turno_id: int, telegram_user_id: int) -> Optional[Turno]:
         """
         Busca um turno por ID.
         
@@ -45,7 +45,7 @@ class TurnoRepository(ABC):
         pass
 
     @abstractmethod
-    def listar_por_periodo(
+    async def listar_por_periodo(
         self,
         telegram_user_id: int,
         inicio: date,
@@ -65,7 +65,7 @@ class TurnoRepository(ABC):
         pass
 
     @abstractmethod
-    def listar_recentes(
+    async def listar_recentes(
         self,
         telegram_user_id: int,
         limit: int = 5,
@@ -83,7 +83,7 @@ class TurnoRepository(ABC):
         pass
 
     @abstractmethod
-    def deletar(self, turno_id: int, telegram_user_id: int) -> bool:
+    async def deletar(self, turno_id: int, telegram_user_id: int) -> bool:
         """
         Deleta um turno.
         
@@ -93,5 +93,12 @@ class TurnoRepository(ABC):
             
         Returns:
             True se deletado, False se não encontrado
+        """
+        pass
+
+    @abstractmethod
+    async def atualizar(self, turno: Turno) -> Turno:
+        """
+        Atualiza um turno existente.
         """
         pass

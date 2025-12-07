@@ -9,10 +9,11 @@ class DeletarTurnoUseCase:
     Use case for deleting a work shift.
     """
 
-    def __init__(self, turno_repository: TurnoRepository):
+    def __init__(self, turno_repository: TurnoRepository, session):
         self.turno_repository = turno_repository
+        self.session = session
 
-    def execute(self, turno_id: int, telegram_user_id: int) -> bool:
+    async def execute(self, turno_id: int, telegram_user_id: int) -> bool:
         """
         Deletes a turno.
         
@@ -23,4 +24,7 @@ class DeletarTurnoUseCase:
         Returns:
             True if deleted, False if not found
         """
-        return self.turno_repository.deletar(turno_id, telegram_user_id)
+        result = await self.turno_repository.deletar(turno_id, telegram_user_id)
+        if result:
+            await self.session.commit()
+        return result

@@ -9,7 +9,7 @@ from caldav import DAVClient
 from icalendar import Calendar, Event
 
 from .config import get_settings
-from . import models
+# from . import models # Avoiding circular or direct dependency, using duck typing given shared structure
 
 
 def _get_client() -> DAVClient:
@@ -34,7 +34,7 @@ def _get_calendar() -> caldav.Calendar:
     raise RuntimeError("Calendário CalDAV não encontrado/configurado corretamente.")
 
 
-def build_event(turno: models.Turno) -> Calendar:
+def build_event(turno) -> Calendar:
     cal = Calendar()
     cal.add("prodid", "-//gestao-turnos//pt-BR")
     cal.add("version", "2.0")
@@ -52,7 +52,18 @@ def build_event(turno: models.Turno) -> Calendar:
         dt_end = dt_end.replace(day=dt_end.day + 1)
 
     evt = Event()
-    tipo_nome = turno.tipo.nome if turno.tipo is not None else turno.tipo_livre or ""
+    
+    # Lógica híbrida para suportar Model SQLAlchemy e Domain Entity
+    tipo_nome = "Turno"
+    if hasattr(turno, "tipo") and turno.tipo:
+        if isinstance(turno.tipo, str):
+            tipo_nome = turno.tipo
+        elif hasattr(turno.tipo, "nome"):
+            tipo_nome = turno.tipo.nome
+    
+    if tipo_nome == "Turno" and hasattr(turno, "tipo_livre") and turno.tipo_livre:
+        tipo_nome = turno.tipo_livre
+
     horas = turno.duracao_minutos / 60.0
     evt.add("summary", f"{tipo_nome} ({horas:.2f}h)")
     evt.add("dtstart", dt_start)
@@ -66,7 +77,7 @@ def build_event(turno: models.Turno) -> Calendar:
     return cal
 
 
-def criar_ou_atualizar_evento(turno: models.Turno, uid_existente: Optional[str]) -> str:
+def criar_ou_atualizar_evento(turno, uid_existente: Optional[str]) -> str:
     cal = _get_calendar()
     ical = build_event(turno).to_ical()
 

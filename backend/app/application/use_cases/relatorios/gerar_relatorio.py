@@ -36,7 +36,7 @@ class GerarRelatorioUseCase:
     def __init__(self, turno_repository: TurnoRepository):
         self.turno_repository = turno_repository
 
-    def execute(
+    async def execute(
         self,
         telegram_user_id: int,
         inicio: date,
@@ -53,7 +53,7 @@ class GerarRelatorioUseCase:
         Returns:
             RelatorioPeriodo with aggregated data
         """
-        turnos = self.turno_repository.listar_por_periodo(
+        turnos = await self.turno_repository.listar_por_periodo(
             telegram_user_id=telegram_user_id,
             inicio=inicio,
             fim=fim,

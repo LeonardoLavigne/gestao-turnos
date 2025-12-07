@@ -16,7 +16,7 @@ class ListarTurnosPeriodoUseCase:
     def __init__(self, turno_repository: TurnoRepository):
         self.turno_repository = turno_repository
 
-    def execute(
+    async def execute(
         self,
         telegram_user_id: int,
         inicio: date,
@@ -33,7 +33,7 @@ class ListarTurnosPeriodoUseCase:
         Returns:
             List of Turno entities ordered by date and time
         """
-        return self.turno_repository.listar_por_periodo(
+        return await self.turno_repository.listar_por_periodo(
             telegram_user_id=telegram_user_id,
             inicio=inicio,
             fim=fim,
@@ -48,7 +48,7 @@ class ListarTurnosRecentesUseCase:
     def __init__(self, turno_repository: TurnoRepository):
         self.turno_repository = turno_repository
 
-    def execute(
+    async def execute(
         self,
         telegram_user_id: int,
         limit: int = 5,
@@ -63,7 +63,7 @@ class ListarTurnosRecentesUseCase:
         Returns:
             List of Turno entities ordered by creation time (newest first)
         """
-        return self.turno_repository.listar_recentes(
+        return await self.turno_repository.listar_recentes(
             telegram_user_id=telegram_user_id,
             limit=limit,
         )

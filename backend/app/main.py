@@ -56,8 +56,33 @@ async def criar_turno(
     db: AsyncSession = Depends(get_db),
 ):
     """Cria um novo turno de trabalho para o usuário autenticado via RLS."""
-    turno = await crud.criar_turno(db, turno_in)
-    return schemas.TurnoRead.from_model(turno)
+    # Obter telegram_user_id do state (setado pelo Middleware ou RLS)
+    telegram_user_id = getattr(request.state, "telegram_user_id", None)
+    if not telegram_user_id:
+         # Fallback: tentar header diretamente se middleware falhar (redundancia)
+         user_id_header = request.headers.get("X-Telegram-User-ID")
+         if user_id_header:
+             telegram_user_id = int(user_id_header)
+         else:
+             raise HTTPException(status_code=401, detail="X-Telegram-User-ID obrigatório")
+             
+    from app.infrastructure.repositories.sqlalchemy_turno_repository import SqlAlchemyTurnoRepository
+    from app.application.use_cases.turnos.criar_turno import CriarTurnoUseCase
+
+    repo = SqlAlchemyTurnoRepository(db)
+    use_case = CriarTurnoUseCase(repo, db)
+    
+    turno_entity = await use_case.execute(
+        telegram_user_id=telegram_user_id,
+        data_referencia=turno_in.data_referencia,
+        hora_inicio=turno_in.hora_inicio,
+        hora_fim=turno_in.hora_fim,
+        tipo=turno_in.tipo,
+        descricao_opcional=turno_in.descricao_opcional,
+    )
+    
+    # Entity já tem tipo como string, compatível com schema diretamente
+    return schemas.TurnoRead.model_validate(turno_entity)
 
 
 @app.get(
@@ -73,8 +98,20 @@ async def listar_turnos(
     db: AsyncSession = Depends(get_db),
 ):
     """Lista turnos do usuário dentro do período especificado."""
-    turnos = await crud.listar_turnos_periodo(db, inicio, fim)
-    return [schemas.TurnoRead.from_model(t) for t in turnos]
+    # Obter telegram_user_id do state
+    telegram_user_id = getattr(request.state, "telegram_user_id", None) or \
+                      (int(request.headers.get("X-Telegram-User-ID")) if request.headers.get("X-Telegram-User-ID") else None)
+    if not telegram_user_id:
+        raise HTTPException(status_code=401, detail="X-Telegram-User-ID obrigatório")
+
+    from app.infrastructure.repositories.sqlalchemy_turno_repository import SqlAlchemyTurnoRepository
+    from app.application.use_cases.turnos.listar_turnos import ListarTurnosPeriodoUseCase
+
+    repo = SqlAlchemyTurnoRepository(db)
+    use_case = ListarTurnosPeriodoUseCase(repo)
+    
+    turnos = await use_case.execute(telegram_user_id, inicio, fim)
+    return [schemas.TurnoRead.model_validate(t) for t in turnos]
 
 
 @app.get(
@@ -89,8 +126,20 @@ async def listar_recentes(
     db: AsyncSession = Depends(get_db),
 ):
     """Lista os turnos mais recentes do usuário."""
-    turnos = await crud.listar_turnos_recentes(db, limit)
-    return [schemas.TurnoRead.from_model(t) for t in turnos]
+    # Obter telegram_user_id do state
+    telegram_user_id = getattr(request.state, "telegram_user_id", None) or \
+                      (int(request.headers.get("X-Telegram-User-ID")) if request.headers.get("X-Telegram-User-ID") else None)
+    if not telegram_user_id:
+        raise HTTPException(status_code=401, detail="X-Telegram-User-ID obrigatório")
+
+    from app.infrastructure.repositories.sqlalchemy_turno_repository import SqlAlchemyTurnoRepository
+    from app.application.use_cases.turnos.listar_turnos import ListarTurnosRecentesUseCase
+
+    repo = SqlAlchemyTurnoRepository(db)
+    use_case = ListarTurnosRecentesUseCase(repo)
+
+    turnos = await use_case.execute(telegram_user_id, limit)
+    return [schemas.TurnoRead.model_validate(t) for t in turnos]
 
 
 @app.delete(
@@ -105,7 +154,19 @@ async def deletar_turno(
     db: AsyncSession = Depends(get_db),
 ):
     """Deleta um turno do usuário."""
-    sucesso = await crud.delete_turno(db, turno_id)
+    # Obter telegram_user_id do state
+    telegram_user_id = getattr(request.state, "telegram_user_id", None) or \
+                      (int(request.headers.get("X-Telegram-User-ID")) if request.headers.get("X-Telegram-User-ID") else None)
+    if not telegram_user_id:
+        raise HTTPException(status_code=401, detail="X-Telegram-User-ID obrigatório")
+
+    from app.infrastructure.repositories.sqlalchemy_turno_repository import SqlAlchemyTurnoRepository
+    from app.application.use_cases.turnos.deletar_turno import DeletarTurnoUseCase
+
+    repo = SqlAlchemyTurnoRepository(db)
+    use_case = DeletarTurnoUseCase(repo, db)
+
+    sucesso = await use_case.execute(turno_id, telegram_user_id)
     if not sucesso:
         raise HTTPException(status_code=404, detail="Turno não encontrado")
     return None
@@ -128,8 +189,20 @@ async def relatorio_periodo(
     db: AsyncSession = Depends(get_db),
 ):
     """Gera relatório de turnos para um período customizado."""
-    turnos = await crud.listar_turnos_periodo(db, inicio, fim)
-    return crud.gerar_relatorio_periodo(turnos, inicio, fim)
+    # Obter telegram_user_id do state
+    telegram_user_id = getattr(request.state, "telegram_user_id", None) or \
+                      (int(request.headers.get("X-Telegram-User-ID")) if request.headers.get("X-Telegram-User-ID") else None)
+    if not telegram_user_id:
+        raise HTTPException(status_code=401, detail="X-Telegram-User-ID obrigatório")
+
+    from app.infrastructure.repositories.sqlalchemy_turno_repository import SqlAlchemyTurnoRepository
+    from app.application.use_cases.relatorios.gerar_relatorio import GerarRelatorioUseCase
+
+    repo = SqlAlchemyTurnoRepository(db)
+    use_case = GerarRelatorioUseCase(repo)
+    
+    # Use Case retorna dataclass, Pydantic Schema valida
+    return await use_case.execute(telegram_user_id, inicio, fim)
 
 
 @app.get(
@@ -145,10 +218,22 @@ async def relatorio_semana(
     db: AsyncSession = Depends(get_db),
 ):
     """Gera relatório de turnos para uma semana específica."""
+    # Obter telegram_user_id do state
+    telegram_user_id = getattr(request.state, "telegram_user_id", None) or \
+                      (int(request.headers.get("X-Telegram-User-ID")) if request.headers.get("X-Telegram-User-ID") else None)
+    if not telegram_user_id:
+        raise HTTPException(status_code=401, detail="X-Telegram-User-ID obrigatório")
+
     inicio = date.fromisocalendar(ano, semana, 1)
     fim = date.fromisocalendar(ano, semana, 7)
-    turnos = await crud.listar_turnos_periodo(db, inicio, fim)
-    return crud.gerar_relatorio_periodo(turnos, inicio, fim)
+
+    from app.infrastructure.repositories.sqlalchemy_turno_repository import SqlAlchemyTurnoRepository
+    from app.application.use_cases.relatorios.gerar_relatorio import GerarRelatorioUseCase
+    
+    repo = SqlAlchemyTurnoRepository(db)
+    use_case = GerarRelatorioUseCase(repo)
+
+    return await use_case.execute(telegram_user_id, inicio, fim)
 
 
 @app.get(
@@ -164,11 +249,23 @@ async def relatorio_mes(
     db: AsyncSession = Depends(get_db),
 ):
     """Gera relatório de turnos para um mês específico."""
+    # Obter telegram_user_id do state
+    telegram_user_id = getattr(request.state, "telegram_user_id", None) or \
+                      (int(request.headers.get("X-Telegram-User-ID")) if request.headers.get("X-Telegram-User-ID") else None)
+    if not telegram_user_id:
+        raise HTTPException(status_code=401, detail="X-Telegram-User-ID obrigatório")
+
     inicio = date(ano, mes, 1)
     ultimo_dia = calendar.monthrange(ano, mes)[1]
     fim = date(ano, mes, ultimo_dia)
-    turnos = await crud.listar_turnos_periodo(db, inicio, fim)
-    return crud.gerar_relatorio_periodo(turnos, inicio, fim)
+    
+    from app.infrastructure.repositories.sqlalchemy_turno_repository import SqlAlchemyTurnoRepository
+    from app.application.use_cases.relatorios.gerar_relatorio import GerarRelatorioUseCase
+    
+    repo = SqlAlchemyTurnoRepository(db)
+    use_case = GerarRelatorioUseCase(repo)
+
+    return await use_case.execute(telegram_user_id, inicio, fim)
 
 
 @app.get(
@@ -188,7 +285,24 @@ async def relatorio_mes_pdf(
     ultimo_dia = calendar.monthrange(ano, mes)[1]
     fim = date(ano, mes, ultimo_dia)
     
-    turnos = await crud.listar_turnos_periodo(db, inicio, fim)
+    # Check user ID (header or param if bot)
+    # logic in original code used telegram_user_id param OR implied context?
+    # Original endpoint has telegram_user_id query param explicitly!
+    if not telegram_user_id:
+        # Tenta header
+        telegram_user_id = getattr(request.state, "telegram_user_id", None) or \
+                           (int(request.headers.get("X-Telegram-User-ID")) if request.headers.get("X-Telegram-User-ID") else None)
+        
+    if not telegram_user_id:
+         raise HTTPException(status_code=401, detail="User ID required")
+
+    from app.infrastructure.repositories.sqlalchemy_turno_repository import SqlAlchemyTurnoRepository
+    from app.application.use_cases.turnos.listar_turnos import ListarTurnosPeriodoUseCase
+    
+    repo = SqlAlchemyTurnoRepository(db)
+    use_case = ListarTurnosPeriodoUseCase(repo)
+    
+    turnos = await use_case.execute(telegram_user_id, inicio, fim)
     
     # Buscar informações do usuário se telegram_user_id for fornecido
     usuario_info = None

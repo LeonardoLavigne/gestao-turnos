@@ -60,7 +60,14 @@ def gerar_pdf_relatorio(turnos: list[models.Turno], inicio, fim, usuario_info: d
     turnos_ordenados = sorted(turnos, key=lambda t: (t.data_referencia, t.hora_inicio))
 
     for turno in turnos_ordenados:
-        local = turno.tipo.nome if turno.tipo else (turno.tipo_livre or "Outro")
+        local = "Outro"
+        if hasattr(turno, "tipo"):
+            if isinstance(turno.tipo, str):
+                local = turno.tipo
+            elif hasattr(turno.tipo, "nome"):
+                 local = turno.tipo.nome
+        if (not local or local == "Outro") and hasattr(turno, "tipo_livre") and turno.tipo_livre:
+            local = turno.tipo_livre
         duracao_horas = turno.duracao_minutos / 60.0
         
         data.append([
