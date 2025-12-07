@@ -67,19 +67,21 @@ class CriarTurnoUseCase:
         saved_turno = await self.turno_repository.criar(turno)
         
         # 3. CalDAV Integration (Infrastructure / External Service)
-        # TODO: Inject CalDAV service instead of importing directly ideally
-        from app.caldav_client import criar_ou_atualizar_evento
-        
-        try:
-            new_uid = criar_ou_atualizar_evento(saved_turno, None)
-            saved_turno.event_uid = new_uid
+        # Only sync if user is NOT Free (Premium feature)
+        if assinatura and not assinatura.is_free:
+            # TODO: Inject CalDAV service instead of importing directly ideally
+            from app.caldav_client import criar_ou_atualizar_evento
             
-            # 4. Update with UID if needed
-            saved_turno = await self.turno_repository.atualizar(saved_turno)
-        except Exception:
-            # Log error but don't fail the transaction?
-            # Or pass? crud.py passed.
-            pass
+            try:
+                new_uid = criar_ou_atualizar_evento(saved_turno, None)
+                saved_turno.event_uid = new_uid
+                
+                # 4. Update with UID if needed
+                saved_turno = await self.turno_repository.atualizar(saved_turno)
+            except Exception:
+                # Log error but don't fail the transaction?
+                # Or pass? crud.py passed.
+                pass
             
         # 5. Commit Transaction
         await self.session.commit()

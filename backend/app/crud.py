@@ -20,66 +20,8 @@ def calcular_duracao_minutos(
     return int((dt_fim - dt_inicio).total_seconds() // 60)
 
 
-async def criar_turno(db: AsyncSession, payload: schemas.TurnoCreate) -> models.Turno:
-    # Obter telegram_user_id da sessão PostgreSQL (setado via SET LOCAL app.current_user_id)
-    result = await db.execute(select(func.current_setting('app.current_user_id', True)))
-    current_user_id = result.scalar()
-    if not current_user_id:
-        raise ValueError("telegram_user_id não definido na sessão (SET LOCAL app.current_user_id)")
-    
-    telegram_user_id = int(current_user_id)
-    
-    duracao = calcular_duracao_minutos(
-        payload.data_referencia, payload.hora_inicio, payload.hora_fim
-    )
+# criar_turno function moved to CriarTurnoUseCase for better architecture.
 
-    tipo_db: models.TipoTurno | None = None
-    tipo_livre: str | None = None
-    if payload.tipo:
-        stmt_tipo = select(models.TipoTurno).where(
-            func.lower(models.TipoTurno.nome) == payload.tipo.lower()
-        )
-        tipo_db = await db.scalar(stmt_tipo)
-        if not tipo_db:
-            tipo_livre = payload.tipo
-
-    turno = models.Turno(
-        telegram_user_id=telegram_user_id,
-        data_referencia=payload.data_referencia,
-        hora_inicio=payload.hora_inicio,
-        hora_fim=payload.hora_fim,
-        duracao_minutos=duracao,
-        tipo=tipo_db,
-        tipo_livre=tipo_livre,
-        descricao_opcional=payload.descricao_opcional,
-    )
-    db.add(turno)
-    await db.flush()
-
-    # integração CalDAV (one-way)
-    try:
-        uid_existente: str | None = None
-        if turno.integracao is not None:
-            uid_existente = turno.integracao.event_uid
-        new_uid = criar_ou_atualizar_evento(turno, uid_existente)
-
-        if turno.integracao is None:
-            integ = models.IntegracaoCalendario(
-                turno_id=turno.id,
-                event_uid=new_uid,
-            )
-            db.add(integ)
-        else:
-            turno.integracao.event_uid = new_uid
-    except Exception:
-        # não quebra o fluxo principal se a integração falhar
-        pass
-
-    # Expunge antes do commit para preservar os dados em memória
-    # e evitar lazy loading que falharia por RLS (SET LOCAL é perdido após commit)
-    db.expunge(turno)
-    await db.commit()
-    return turno
 
 
 async def listar_turnos_periodo(

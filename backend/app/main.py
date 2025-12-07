@@ -295,7 +295,7 @@ async def relatorio_mes(
 )
 async def relatorio_mes_pdf(
     request: Request,
-    ano: int = Query(..., ge=2000, le=2100),
+    ano: int = Query(..., description="Ano do relatório"),
     mes: int = Query(..., ge=1, le=12),
     telegram_user_id: int = Query(None, description="ID do usuário para cabeçalho"),
     db: AsyncSession = Depends(get_db),
@@ -315,6 +315,18 @@ async def relatorio_mes_pdf(
         
     if not telegram_user_id:
          raise HTTPException(status_code=401, detail="User ID required")
+
+    # Check Subscription (Premium Feature)
+    from app.infrastructure.repositories.sqlalchemy_assinatura_repository import SqlAlchemyAssinaturaRepository
+    
+    assinatura_repo = SqlAlchemyAssinaturaRepository(db)
+    assinatura = await assinatura_repo.get_by_user_id(telegram_user_id)
+    
+    if not assinatura or assinatura.is_free:
+        raise HTTPException(
+            status_code=403, 
+            detail="Funcionalidade exclusiva para assinantes Premium."
+        )
 
     from app.infrastructure.repositories.sqlalchemy_turno_repository import SqlAlchemyTurnoRepository
     from app.application.use_cases.turnos.listar_turnos import ListarTurnosPeriodoUseCase
