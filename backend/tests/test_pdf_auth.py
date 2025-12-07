@@ -6,6 +6,7 @@ from app.domain.entities.assinatura import Assinatura, PlanoType, AssinaturaStat
 from unittest.mock import AsyncMock, MagicMock
 
 @pytest.mark.asyncio
+@pytest.mark.asyncio
 async def test_pdf_endpoint_forbidden_for_free_user(monkeypatch):
     """
     Verify that a Free user receives 403 Forbidden when accessing the PDF endpoint.
@@ -20,10 +21,9 @@ async def test_pdf_endpoint_forbidden_for_free_user(monkeypatch):
         data_inicio=None, data_fim=None, criado_em=None, atualizado_em=None
     )
     
-    # Patch the repository injection in main.py
-    # Since main.py instantiates SqlAlchemyAssinaturaRepository(db), we need to mock the class
+    # Patch the repository injection in relatorios.py
     mock_repo_cls = MagicMock(return_value=mock_repo)
-    monkeypatch.setattr("app.infrastructure.repositories.sqlalchemy_assinatura_repository.SqlAlchemyAssinaturaRepository", mock_repo_cls)
+    monkeypatch.setattr("app.api.routers.relatorios.SqlAlchemyAssinaturaRepository", mock_repo_cls)
 
     async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as ac:
         headers = {
@@ -53,41 +53,29 @@ async def test_pdf_endpoint_allowed_for_pro_user(monkeypatch):
     )
     
     mock_repo_cls = MagicMock(return_value=mock_repo)
-    monkeypatch.setattr("app.infrastructure.repositories.sqlalchemy_assinatura_repository.SqlAlchemyAssinaturaRepository", mock_repo_cls)
+    monkeypatch.setattr("app.api.routers.relatorios.SqlAlchemyAssinaturaRepository", mock_repo_cls)
     
-    # Also mock ListarTurnosPeriodoUseCase to avoid db errors
-    mock_use_case = AsyncMock() # The instance has async methods
-    mock_use_case.execute.return_value = []
+    # Also mock SqlAlchemyTurnoRepository since it's used in BaixarRelatorioPdfUseCase
+    mock_turno_repo = AsyncMock()
+    mock_turno_repo.listar_por_periodo.return_value = []
     
-    mock_use_case_cls = MagicMock(return_value=mock_use_case) # The constructor is sync
-    monkeypatch.setattr("app.application.use_cases.turnos.listar_turnos.ListarTurnosPeriodoUseCase", mock_use_case_cls)
+    mock_turno_repo_cls = MagicMock(return_value=mock_turno_repo)
+    monkeypatch.setattr("app.api.routers.relatorios.SqlAlchemyTurnoRepository", mock_turno_repo_cls)
     
-    # Mock SqlAlchemyUsuarioRepository.buscar_por_telegram_id (used in main.py)
-    # We need to mock the INSTANCE method since we instantiate repo inside endpoint.
-    # The endpoint does: repo = SqlAlchemyUsuarioRepository(db); await repo.buscar...
-    
-    # Mocking the class to return a mock instance
+    # Mock SqlAlchemyUsuarioRepository.buscar_por_telegram_id (used in BaixarRelatorioPdfUseCase)
     mock_user_repo = AsyncMock()
-    mock_user_repo.buscar_por_telegram_id.return_value = None # No user needed for PDF generation if info not passed?
-    # Or return a user? Logic: if telegram_user_id is passed, it looks up user.
-    # In this test we might imply user exists or not.
-    # The test passes no user info?
-    # Let's check test logic. It calls client.get(..., params={"telegram_user_id": 456})
-    # So it looks up user.
-    
-    # Return Dummy User
-    mock_user_repo.buscar_por_telegram_id.return_value = None
+    mock_user_repo.buscar_por_telegram_id.return_value = None 
     
     mock_user_repo_cls = MagicMock(return_value=mock_user_repo)
-    monkeypatch.setattr("app.infrastructure.repositories.sqlalchemy_usuario_repository.SqlAlchemyUsuarioRepository", mock_user_repo_cls)
+    monkeypatch.setattr("app.api.routers.relatorios.SqlAlchemyUsuarioRepository", mock_user_repo_cls)
     
     # Mock ReportLabPdfService
     mock_pdf_service = MagicMock()
     mock_pdf_service.gerar_pdf_mes.return_value = b"%PDF-1.4..."
     mock_pdf_service_cls = MagicMock(return_value=mock_pdf_service)
     
-    # We patch the class where it is defined, so when imported by main it uses the mock
-    monkeypatch.setattr("app.infrastructure.services.pdf_service.ReportLabPdfService", mock_pdf_service_cls)
+    # We patch the class where it is used in relatorios.py
+    monkeypatch.setattr("app.api.routers.relatorios.ReportLabPdfService", mock_pdf_service_cls)
     
     async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as ac:
         headers = {
