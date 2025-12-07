@@ -25,4 +25,22 @@ api.interceptors.request.use(
     }
 );
 
+api.interceptors.response.use(
+    (response) => response,
+    (error) => {
+        if (error.response && error.response.status === 401) {
+            if (typeof window !== 'undefined') {
+                Cookies.remove('auth_token');
+                localStorage.removeItem('token');
+                localStorage.removeItem('user');
+                // Avoid infinite loop if already on login
+                if (!window.location.pathname.includes('/login')) {
+                    window.location.href = '/login';
+                }
+            }
+        }
+        return Promise.reject(error);
+    }
+);
+
 export default api;

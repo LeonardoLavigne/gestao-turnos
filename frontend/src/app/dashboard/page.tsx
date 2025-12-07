@@ -6,6 +6,8 @@ import Cookies from 'js-cookie';
 import { LogOut, Loader2 } from 'lucide-react';
 import { useQuery } from '@tanstack/react-query';
 import { NovoTurnoDialog } from '@/components/novo-turno-dialog';
+import { toast } from 'sonner';
+import { useEffect } from 'react';
 
 // Fetchers
 const fetchUser = async () => {
@@ -24,25 +26,28 @@ export default function Dashboard() {
     const { data: user, isLoading: loadingUser, error: userError } = useQuery({
         queryKey: ['user'],
         queryFn: fetchUser,
-        retry: 1, // Se falhar (ex: 401), tenta só mais 1 vez
-        staleTime: 1000 * 60 * 5, // 5 minutos sem refetch
+        retry: 1,
+        staleTime: 1000 * 60 * 5,
     });
 
-    const { data: turnos, isLoading: loadingTurnos } = useQuery({
+    const { data: turnos, isLoading: loadingTurnos, error: turnosError } = useQuery({
         queryKey: ['turnos'],
         queryFn: fetchTurnos,
-        enabled: !!user, // Só busca turnos se tiver usuário
+        enabled: !!user,
     });
 
-    // Logout handling on Auth Error
-    if (userError) {
-        // @ts-expect-error - Axios Error type check
-        if (userError.response?.status === 401 || userError.response?.status === 403) {
-            Cookies.remove('auth_token');
-            localStorage.removeItem('token');
-            router.push('/login');
+    // Error Handling with Toast
+    useEffect(() => {
+        if (userError) {
+            // @ts-expect-error - Axios Error
+            if (userError.response?.status !== 401) {
+                toast.error("Erro ao carregar perfil. Tente recarregar a página.");
+            }
         }
-    }
+        if (turnosError) {
+            toast.error("Não foi possível carregar os turnos.");
+        }
+    }, [userError, turnosError]);
 
     const handleLogout = () => {
         Cookies.remove('auth_token');
@@ -58,9 +63,6 @@ export default function Dashboard() {
             </div>
         );
     }
-
-    // Fallback UI if we have error but didn't redirect yet
-    if (userError) return <div className="p-8 text-center text-red-500">Erro ao carregar perfil. Recarregue a página.</div>;
 
     return (
         <div className="min-h-screen bg-gray-50 flex flex-col">
