@@ -6,7 +6,7 @@ from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Paragraph, 
 from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
 from reportlab.lib.units import cm
 
-from . import models
+from app.infrastructure.database import models
 
 def gerar_pdf_relatorio(turnos: list[models.Turno], inicio, fim, usuario_info: dict | None = None) -> bytes:
     buffer = io.BytesIO()

@@ -4,7 +4,7 @@ from sqlalchemy.ext.asyncio import create_async_engine, async_sessionmaker, Asyn
 from sqlalchemy.engine import make_url
 from fastapi.testclient import TestClient
 from httpx import AsyncClient, ASGITransport
-from app.config import get_settings
+from app.core.config import get_settings
 from app.main import app
 
 @pytest.fixture

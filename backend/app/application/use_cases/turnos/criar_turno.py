@@ -9,7 +9,7 @@ from app.domain.entities.turno import Turno
 from app.domain.repositories.turno_repository import TurnoRepository
 from app.domain.repositories.assinatura_repository import AssinaturaRepository
 from app.domain.exceptions.freemium_exception import LimiteTurnosExcedidoException
-from app.config import get_settings
+from app.core.config import get_settings
 
 
 class CriarTurnoUseCase:
@@ -70,7 +70,7 @@ class CriarTurnoUseCase:
         # Only sync if user is NOT Free (Premium feature)
         if assinatura and not assinatura.is_free:
             # TODO: Inject CalDAV service instead of importing directly ideally
-            from app.caldav_client import criar_ou_atualizar_evento
+            from app.infrastructure.external.caldav_service import criar_ou_atualizar_evento
             
             try:
                 new_uid = criar_ou_atualizar_evento(saved_turno, None)

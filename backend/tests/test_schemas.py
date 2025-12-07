@@ -4,7 +4,7 @@ Testes para o módulo schemas (validação Pydantic).
 import pytest
 from datetime import date, time, datetime
 
-from app import schemas
+from app.presentation import schemas
 
 
 class TestTurnoBase:

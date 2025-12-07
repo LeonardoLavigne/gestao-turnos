@@ -4,7 +4,7 @@ from typing import Optional
 from sqlalchemy import Integer, BigInteger, String, Date, Time, DateTime, ForeignKey
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
-from .database import Base
+from .session import Base
 
 
 class TipoTurno(Base):

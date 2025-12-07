@@ -17,7 +17,7 @@ class UsuarioRepository(ABC):
     """
 
     @abstractmethod
-    def buscar_por_telegram_id(self, telegram_user_id: int) -> Optional[Usuario]:
+    async def buscar_por_telegram_id(self, telegram_user_id: int) -> Optional[Usuario]:
         """
         Busca um usuário pelo Telegram user ID.
         
@@ -30,7 +30,7 @@ class UsuarioRepository(ABC):
         pass
 
     @abstractmethod
-    def criar(self, usuario: Usuario) -> Usuario:
+    async def criar(self, usuario: Usuario) -> Usuario:
         """
         Persiste um novo usuário.
         
@@ -43,7 +43,7 @@ class UsuarioRepository(ABC):
         pass
 
     @abstractmethod
-    def atualizar(self, usuario: Usuario) -> Usuario:
+    async def atualizar(self, usuario: Usuario) -> Usuario:
         """
         Atualiza um usuário existente.
         
@@ -59,7 +59,7 @@ class UsuarioRepository(ABC):
         pass
 
     @abstractmethod
-    def existe_por_numero_funcionario(self, numero_funcionario: str) -> bool:
+    async def existe_por_numero_funcionario(self, numero_funcionario: str) -> bool:
         """
         Verifica se já existe um usuário com o número de funcionário.
         

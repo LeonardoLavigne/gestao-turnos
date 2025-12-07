@@ -8,9 +8,9 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 from datetime import datetime, UTC
 
-from app.config import get_settings
-from app.database import get_db
-from app.models import Assinatura
+from app.core.config import get_settings
+from app.infrastructure.database.session import get_db
+from app.infrastructure.database.models import Assinatura
 
 logger = logging.getLogger(__name__)
 

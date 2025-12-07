@@ -22,7 +22,7 @@ fi
 
 if [ $# -eq 0 ]; then
     echo "🚀 Iniciando aplicação..."
-    exec uv run python -m app.run_all
+    exec uv run uvicorn app.main:app --host 0.0.0.0 --port 8000
 else
     echo "🔧 Executando comando customizado: $@"
     exec "$@"

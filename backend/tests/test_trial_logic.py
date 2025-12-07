@@ -1,7 +1,8 @@
 import pytest
 from datetime import datetime, timedelta, UTC
 from sqlalchemy import select, text
-from app import crud, models, schemas
+from app.infrastructure.database import models
+from app.presentation import schemas
 
 @pytest.mark.asyncio
 async def test_criar_usuario_com_trial(db_session_rls):
@@ -26,7 +27,16 @@ async def test_criar_usuario_com_trial(db_session_rls):
     await db.commit()
     
     # 1. Create user
-    usuario = await crud.criar_usuario(db, payload)
+    # 1. Create user via UseCase
+    from app.infrastructure.repositories.sqlalchemy_usuario_repository import SqlAlchemyUsuarioRepository
+    from app.infrastructure.repositories.sqlalchemy_assinatura_repository import SqlAlchemyAssinaturaRepository
+    from app.application.use_cases.usuarios.criar_usuario import CriarUsuarioUseCase
+    
+    usuario_repo = SqlAlchemyUsuarioRepository(db)
+    assinatura_repo = SqlAlchemyAssinaturaRepository(db)
+    use_case = CriarUsuarioUseCase(usuario_repo, assinatura_repo)
+    
+    usuario = await use_case.execute(payload)
     assert usuario.telegram_user_id == telegram_id
     
     # 2. Verify subscription created

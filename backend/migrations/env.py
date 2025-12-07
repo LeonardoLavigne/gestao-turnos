@@ -26,8 +26,8 @@ from pathlib import Path
 # Adicionar diretório do projeto ao path
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
-from app.models import Base
-from app.config import get_settings
+from app.infrastructure.database.models import Base
+from app.core.config import get_settings
 
 # Configurar target_metadata com os models
 target_metadata = Base.metadata

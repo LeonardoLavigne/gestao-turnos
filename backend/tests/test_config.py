@@ -10,7 +10,7 @@ class TestSettings:
     
     def test_database_url_from_settings(self):
         """Verificar que database_url pode ser lida das settings."""
-        from app.config import get_settings
+        from app.core.config import get_settings
         
         settings = get_settings()
         
@@ -19,7 +19,7 @@ class TestSettings:
     
     def test_telegram_allowed_users_parsing(self):
         """Verificar parsing de telegram_allowed_users."""
-        from app.config import get_settings
+        from app.core.config import get_settings
         
         settings = get_settings()
         
@@ -29,7 +29,7 @@ class TestSettings:
     
     def test_timezone(self):
         """Verificar timezone padrão."""
-        from app.config import get_settings
+        from app.core.config import get_settings
         
         settings = get_settings()
         
@@ -39,7 +39,7 @@ class TestSettings:
     
     def test_stripe_keys_optional(self):
         """Verificar que chaves Stripe são opcionais."""
-        from app.config import get_settings
+        from app.core.config import get_settings
         
         settings = get_settings()
         
@@ -53,7 +53,7 @@ class TestDatabaseUrl:
     
     def test_database_url_configured(self):
         """database_url está configurada."""
-        from app.config import get_settings
+        from app.core.config import get_settings
         
         settings = get_settings()
         

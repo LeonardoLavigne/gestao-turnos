@@ -10,7 +10,7 @@ garantindo que SET LOCAL seja executado na mesma transação das queries.
 from fastapi import Request
 from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.responses import JSONResponse
-from app.config import get_settings
+from app.core.config import get_settings
 import secrets
 
 

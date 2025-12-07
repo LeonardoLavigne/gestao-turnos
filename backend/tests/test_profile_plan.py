@@ -1,7 +1,9 @@
 
 import pytest
-from app import crud, models, schemas
-from app.config import get_settings
+
+from app.infrastructure.database import models
+from app.presentation import schemas
+from app.core.config import get_settings
 from sqlalchemy import text, select
 from datetime import datetime
 

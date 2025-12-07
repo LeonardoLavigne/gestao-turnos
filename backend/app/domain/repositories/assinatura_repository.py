@@ -7,3 +7,8 @@ class AssinaturaRepository(ABC):
     async def get_by_user_id(self, telegram_user_id: int) -> Optional[Assinatura]:
         """Recupera a assinatura ativa de um usuário pelo ID do Telegram."""
         pass
+
+    @abstractmethod
+    async def criar(self, assinatura: Assinatura) -> Assinatura:
+        """Cria e persiste uma nova assinatura."""
+        pass

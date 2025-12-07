@@ -40,7 +40,7 @@ async def test_caldav_sync_skipped_for_free_user(mock_repo, mock_assinatura_repo
 
     # Mock CalDAV client
     mock_caldav = MagicMock()
-    monkeypatch.setattr("app.caldav_client.criar_ou_atualizar_evento", mock_caldav)
+    monkeypatch.setattr("app.infrastructure.external.caldav_service.criar_ou_atualizar_evento", mock_caldav)
     
     # Execute
     await use_case.execute(123, date(2025, 1, 1), time(8, 0), time(16, 0), "Hospital")
@@ -66,7 +66,7 @@ async def test_caldav_sync_called_for_pro_user(mock_repo, mock_assinatura_repo, 
 
     # Mock CalDAV client
     mock_caldav = MagicMock()
-    monkeypatch.setattr("app.caldav_client.criar_ou_atualizar_evento", mock_caldav)
+    monkeypatch.setattr("app.infrastructure.external.caldav_service.criar_ou_atualizar_evento", mock_caldav)
     
     # Execute
     await use_case.execute(123, date(2025, 1, 1), time(8, 0), time(16, 0), "Hospital")

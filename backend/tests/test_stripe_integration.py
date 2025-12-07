@@ -3,7 +3,7 @@ from sqlalchemy import text, select
 from sqlalchemy.ext.asyncio import create_async_engine, async_sessionmaker, AsyncSession
 from app.api.webhook import handle_checkout_completed, handle_subscription_updated, handle_subscription_deleted
 from app.infrastructure.subscription_middleware import check_subscription
-from app.models import Assinatura
+from app.infrastructure.database.models import Assinatura
 
 # Mock de objetos Stripe
 class MockStripeObject(dict):
@@ -29,7 +29,7 @@ async def test_subscription_lifecycle():
     
     # Usar sessão de superuser para todo o teste
     # Usando DATABASE_URL do ambiente (que aponta para 'postgres' no Docker) ou fallback
-    from app.config import get_settings
+    from app.core.config import get_settings
     settings = get_settings()
     superuser_url = settings.database_url
     if not superuser_url:

@@ -6,7 +6,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import text
 
-from app.database import get_db
+from app.infrastructure.database.session import get_db
 
 logger = logging.getLogger(__name__)
 

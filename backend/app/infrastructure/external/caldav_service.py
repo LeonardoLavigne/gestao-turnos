@@ -8,7 +8,7 @@ import caldav
 from caldav import DAVClient
 from icalendar import Calendar, Event
 
-from .config import get_settings
+from app.core.config import get_settings
 # from . import models # Avoiding circular or direct dependency, using duck typing given shared structure
 
 

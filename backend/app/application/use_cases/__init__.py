@@ -11,8 +11,6 @@ from app.application.use_cases.turnos import (
 )
 from app.application.use_cases.relatorios import (
     GerarRelatorioUseCase,
-    RelatorioDia,
-    RelatorioPeriodo,
 )
 
 __all__ = [
@@ -23,6 +21,4 @@ __all__ = [
     "DeletarTurnoUseCase",
     # Relatórios
     "GerarRelatorioUseCase",
-    "RelatorioDia",
-    "RelatorioPeriodo",
 ]

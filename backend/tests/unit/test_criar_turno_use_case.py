@@ -45,7 +45,7 @@ async def test_create_shift_free_user_within_limit(use_case, mock_assinatura_rep
     
     # Mock CalDAV success
     mock_caldav = MagicMock(return_value="uid_123")
-    monkeypatch.setattr("app.caldav_client.criar_ou_atualizar_evento", mock_caldav)
+    monkeypatch.setattr("app.infrastructure.external.caldav_service.criar_ou_atualizar_evento", mock_caldav)
 
     result = await use_case.execute(
         telegram_user_id=user_id,
@@ -93,7 +93,7 @@ async def test_create_shift_pro_user_ignores_limit(use_case, mock_assinatura_rep
 
     # Mock CalDAV success
     mock_caldav = MagicMock(return_value="uid_456")
-    monkeypatch.setattr("app.caldav_client.criar_ou_atualizar_evento", mock_caldav)
+    monkeypatch.setattr("app.infrastructure.external.caldav_service.criar_ou_atualizar_evento", mock_caldav)
 
     await use_case.execute(
         telegram_user_id=user_id,
@@ -120,7 +120,7 @@ async def test_create_shift_caldav_failure_is_ignored(use_case, mock_assinatura_
     # Note: We need to patch where it is USED, i.e., app.application.use_cases.turnos.criar_turno
     
     mock_caldav = MagicMock(side_effect=Exception("CalDAV Error"))
-    monkeypatch.setattr("app.caldav_client.criar_ou_atualizar_evento", mock_caldav)
+    monkeypatch.setattr("app.infrastructure.external.caldav_service.criar_ou_atualizar_evento", mock_caldav)
     
     # IMPORTANT: Since `from app.caldav_client import` happens INSIDE the method, 
     # we need to make sure we patch it correctly. 

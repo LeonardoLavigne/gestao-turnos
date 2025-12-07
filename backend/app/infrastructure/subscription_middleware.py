@@ -3,7 +3,7 @@ from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.responses import JSONResponse
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
-from app.models import Assinatura
+from app.infrastructure.database.models import Assinatura
 
 class SubscriptionMiddleware(BaseHTTPMiddleware):
     async def dispatch(self, request: Request, call_next):

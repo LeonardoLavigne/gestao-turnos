@@ -7,7 +7,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 from app.domain.entities.turno import Turno
 from app.domain.repositories.turno_repository import TurnoRepository
-from app import models
+from app.infrastructure.database import models
 
 class SqlAlchemyTurnoRepository(TurnoRepository):
     """

@@ -12,9 +12,10 @@ from fastapi import FastAPI, Depends, Query, Request, HTTPException
 from fastapi.responses import Response
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from .database import Base, engine, get_db
-from . import crud, schemas, models
-from .reports import gerar_pdf_relatorio
+from .infrastructure.database.session import get_db
+from app.infrastructure.database import models
+from app.presentation import schemas
+from app.infrastructure.services.pdf_service import gerar_pdf_relatorio
 from app.infrastructure.middleware import RLSMiddleware, InternalSecurityMiddleware
 from app.api import webhook, health, pages
 from app.infrastructure.logger import setup_logging
@@ -339,7 +340,9 @@ async def relatorio_mes_pdf(
     # Buscar informações do usuário se telegram_user_id for fornecido
     usuario_info = None
     if telegram_user_id:
-        usuario = await crud.get_usuario_by_telegram_id(db, telegram_user_id)
+        from app.infrastructure.repositories.sqlalchemy_usuario_repository import SqlAlchemyUsuarioRepository
+        usuario_repo = SqlAlchemyUsuarioRepository(db)
+        usuario = await usuario_repo.buscar_por_telegram_id(telegram_user_id)
         if usuario:
             usuario_info = {
                 "nome": usuario.nome,
@@ -371,7 +374,9 @@ async def get_usuario(
     db: AsyncSession = Depends(get_db),
 ):
     """Busca um usuário pelo seu Telegram User ID."""
-    usuario = await crud.get_usuario_by_telegram_id(db, telegram_user_id)
+    from app.infrastructure.repositories.sqlalchemy_usuario_repository import SqlAlchemyUsuarioRepository
+    repo = SqlAlchemyUsuarioRepository(db)
+    usuario = await repo.buscar_por_telegram_id(telegram_user_id)
     if not usuario:
         raise HTTPException(status_code=404, detail="Usuário não encontrado")
     
@@ -416,11 +421,20 @@ async def criar_usuario(
     db: AsyncSession = Depends(get_db),
 ):
     """Cria um novo usuário no sistema."""
-    existe = await crud.get_usuario_by_telegram_id(db, usuario_in.telegram_user_id)
+    from app.infrastructure.repositories.sqlalchemy_usuario_repository import SqlAlchemyUsuarioRepository
+    from app.infrastructure.repositories.sqlalchemy_assinatura_repository import SqlAlchemyAssinaturaRepository
+    from app.application.use_cases.usuarios.criar_usuario import CriarUsuarioUseCase
+
+    usuario_repo = SqlAlchemyUsuarioRepository(db)
+    assinatura_repo = SqlAlchemyAssinaturaRepository(db)
+    use_case = CriarUsuarioUseCase(usuario_repo, assinatura_repo)
+
+    # Check existence
+    existe = await usuario_repo.buscar_por_telegram_id(usuario_in.telegram_user_id)
     if existe:
         raise HTTPException(status_code=400, detail="Usuário já cadastrado")
     
-    usuario = await crud.criar_usuario(db, usuario_in)
+    usuario = await use_case.execute(usuario_in)
     return usuario
 
 
@@ -436,7 +450,13 @@ async def atualizar_usuario(
     db: AsyncSession = Depends(get_db),
 ):
     """Atualiza dados de um usuário existente."""
-    usuario = await crud.atualizar_usuario(db, telegram_user_id, usuario_in)
+    from app.infrastructure.repositories.sqlalchemy_usuario_repository import SqlAlchemyUsuarioRepository
+    from app.application.use_cases.usuarios.atualizar_usuario import AtualizarUsuarioUseCase
+
+    usuario_repo = SqlAlchemyUsuarioRepository(db)
+    use_case = AtualizarUsuarioUseCase(usuario_repo)
+
+    usuario = await use_case.execute(telegram_user_id, usuario_in)
     if not usuario:
         raise HTTPException(status_code=404, detail="Usuário não encontrado")
     return usuario

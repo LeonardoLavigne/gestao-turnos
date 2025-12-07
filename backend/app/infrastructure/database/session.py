@@ -6,7 +6,7 @@ from sqlalchemy.ext.asyncio import create_async_engine, async_sessionmaker, Asyn
 from sqlalchemy.orm import DeclarativeBase
 from pathlib import Path
 
-from .config import get_settings
+from app.core.config import get_settings
 
 
 class Base(DeclarativeBase):

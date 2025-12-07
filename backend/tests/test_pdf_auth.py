@@ -1,7 +1,7 @@
 import pytest
 from httpx import AsyncClient, ASGITransport
 from app.main import app
-from app.config import get_settings
+from app.core.config import get_settings
 from app.domain.entities.assinatura import Assinatura, PlanoType, AssinaturaStatus
 from unittest.mock import AsyncMock, MagicMock
 
@@ -62,8 +62,24 @@ async def test_pdf_endpoint_allowed_for_pro_user(monkeypatch):
     mock_use_case_cls = MagicMock(return_value=mock_use_case) # The constructor is sync
     monkeypatch.setattr("app.application.use_cases.turnos.listar_turnos.ListarTurnosPeriodoUseCase", mock_use_case_cls)
     
-    # Mock crud.get_usuario_by_telegram_id (used in main.py)
-    monkeypatch.setattr("app.crud.get_usuario_by_telegram_id", AsyncMock(return_value=None))
+    # Mock SqlAlchemyUsuarioRepository.buscar_por_telegram_id (used in main.py)
+    # We need to mock the INSTANCE method since we instantiate repo inside endpoint.
+    # The endpoint does: repo = SqlAlchemyUsuarioRepository(db); await repo.buscar...
+    
+    # Mocking the class to return a mock instance
+    mock_user_repo = AsyncMock()
+    mock_user_repo.buscar_por_telegram_id.return_value = None # No user needed for PDF generation if info not passed?
+    # Or return a user? Logic: if telegram_user_id is passed, it looks up user.
+    # In this test we might imply user exists or not.
+    # The test passes no user info?
+    # Let's check test logic. It calls client.get(..., params={"telegram_user_id": 456})
+    # So it looks up user.
+    
+    # Return Dummy User
+    mock_user_repo.buscar_por_telegram_id.return_value = None
+    
+    mock_user_repo_cls = MagicMock(return_value=mock_user_repo)
+    monkeypatch.setattr("app.infrastructure.repositories.sqlalchemy_usuario_repository.SqlAlchemyUsuarioRepository", mock_user_repo_cls)
     
     # Mock pdf generation
     monkeypatch.setattr("app.main.gerar_pdf_relatorio", lambda *args: b"%PDF-1.4...")

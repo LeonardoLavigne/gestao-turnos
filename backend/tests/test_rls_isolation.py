@@ -5,7 +5,7 @@ Valida que as políticas PostgreSQL garantem isolamento de dados entre usuários
 """
 import pytest
 from sqlalchemy import text
-from app.config import get_settings
+from app.core.config import get_settings
 
 
 @pytest.mark.asyncio

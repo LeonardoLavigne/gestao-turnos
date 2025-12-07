@@ -8,10 +8,10 @@ from sqlalchemy.orm import Session
 
 from app.domain.entities.usuario import Usuario
 from app.domain.repositories.usuario_repository import UsuarioRepository
-from app import models
+from app.infrastructure.database import models
 
 
-class SQLAlchemyUsuarioRepository(UsuarioRepository):
+class SqlAlchemyUsuarioRepository(UsuarioRepository):
     """
     SQLAlchemy implementation of the Usuario repository.
     
@@ -41,43 +41,44 @@ class SQLAlchemyUsuarioRepository(UsuarioRepository):
             numero_funcionario=entity.numero_funcionario,
         )
 
-    def buscar_por_telegram_id(self, telegram_user_id: int) -> Optional[Usuario]:
+    async def buscar_por_telegram_id(self, telegram_user_id: int) -> Optional[Usuario]:
         """Busca um usuário pelo Telegram user ID."""
         stmt = select(models.Usuario).where(
             models.Usuario.telegram_user_id == telegram_user_id
         )
-        model = self.session.scalar(stmt)
+        model = await self.session.scalar(stmt)
         if not model:
             return None
         return self._to_entity(model)
 
-    def criar(self, usuario: Usuario) -> Usuario:
+    async def criar(self, usuario: Usuario) -> Usuario:
         """Persiste um novo usuário."""
         model = self._to_model(usuario)
         self.session.add(model)
-        self.session.commit()
-        self.session.refresh(model)
+        await self.session.commit()
+        await self.session.refresh(model)
         return self._to_entity(model)
 
-    def atualizar(self, usuario: Usuario) -> Usuario:
+    async def atualizar(self, usuario: Usuario) -> Usuario:
         """Atualiza um usuário existente."""
         stmt = select(models.Usuario).where(
             models.Usuario.telegram_user_id == usuario.telegram_user_id
         )
-        model = self.session.scalar(stmt)
+        model = await self.session.scalar(stmt)
         if not model:
             raise ValueError(f"Usuario with telegram_user_id {usuario.telegram_user_id} not found")
         
         model.nome = usuario.nome
         model.numero_funcionario = usuario.numero_funcionario
         
-        self.session.commit()
-        self.session.refresh(model)
+        await self.session.commit()
+        await self.session.refresh(model)
         return self._to_entity(model)
 
-    def existe_por_numero_funcionario(self, numero_funcionario: str) -> bool:
+    async def existe_por_numero_funcionario(self, numero_funcionario: str) -> bool:
         """Verifica se já existe um usuário com o número de funcionário."""
         stmt = select(models.Usuario).where(
             models.Usuario.numero_funcionario == numero_funcionario
         )
-        return self.session.scalar(stmt) is not None
+        result = await self.session.scalar(stmt)
+        return result is not None

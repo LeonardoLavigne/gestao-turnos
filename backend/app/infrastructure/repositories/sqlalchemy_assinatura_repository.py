@@ -2,7 +2,7 @@ from typing import Optional
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app import models
+from app.infrastructure.database import models
 from app.domain.entities.assinatura import Assinatura
 from app.domain.repositories.assinatura_repository import AssinaturaRepository
 
@@ -32,3 +32,20 @@ class SqlAlchemyAssinaturaRepository(AssinaturaRepository):
         if not result:
             return None
         return self._to_entity(result)
+
+    async def criar(self, assinatura: Assinatura) -> Assinatura:
+        db_assinatura = models.Assinatura(
+            telegram_user_id=assinatura.telegram_user_id,
+            stripe_customer_id=assinatura.stripe_customer_id,
+            stripe_subscription_id=assinatura.stripe_subscription_id,
+            status=assinatura.status,
+            plano=assinatura.plano,
+            data_inicio=assinatura.data_inicio,
+            data_fim=assinatura.data_fim,
+            criado_em=assinatura.criado_em,
+            atualizado_em=assinatura.atualizado_em,
+        )
+        self.session.add(db_assinatura)
+        await self.session.flush()
+        await self.session.refresh(db_assinatura)
+        return self._to_entity(db_assinatura)
