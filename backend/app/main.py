@@ -6,6 +6,7 @@ users, and reports with Row-Level Security (RLS) for multi-tenancy.
 """
 from datetime import date
 import calendar
+from contextlib import asynccontextmanager
 
 from fastapi import FastAPI, Depends, Query, Request, HTTPException
 from fastapi.responses import Response
@@ -18,15 +19,31 @@ from app.infrastructure.middleware import RLSMiddleware, InternalSecurityMiddlew
 from app.api import webhook, health, pages
 from app.infrastructure.logger import setup_logging
 from sqlalchemy import select
+from app.domain.exceptions.freemium_exception import LimiteTurnosExcedidoException
 
 # Configurar logs na inicialização
 setup_logging()
 
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    # Setup
+    yield
+    # Cleanup
+
 app = FastAPI(
-    title="Gestão de Turnos",
-    description="API para gestão de turnos de trabalho com multi-tenancy via RLS",
+    title="Gestão de Turnos API",
+    description="API com RLS e Integração CalDAV",
     version="1.0.0",
+    lifespan=lifespan,
 )
+
+@app.exception_handler(LimiteTurnosExcedidoException)
+async def freemium_exception_handler(request: Request, exc: LimiteTurnosExcedidoException):
+    return Response(
+        content=f'{{"detail": "{str(exc)}"}}',
+        status_code=403,
+        media_type="application/json"
+    )
 
 # Registrar Webhooks (antes do middleware RLS para evitar bloqueio)
 app.include_router(webhook.router)
@@ -68,11 +85,14 @@ async def criar_turno(
              
     from app.infrastructure.repositories.sqlalchemy_turno_repository import SqlAlchemyTurnoRepository
     from app.application.use_cases.turnos.criar_turno import CriarTurnoUseCase
+    from app.infrastructure.repositories.sqlalchemy_assinatura_repository import SqlAlchemyAssinaturaRepository
 
     repo = SqlAlchemyTurnoRepository(db)
-    use_case = CriarTurnoUseCase(repo, db)
+    assinatura_repo = SqlAlchemyAssinaturaRepository(db)
+    use_case = CriarTurnoUseCase(repo, assinatura_repo, db)
     
     turno_entity = await use_case.execute(
+
         telegram_user_id=telegram_user_id,
         data_referencia=turno_in.data_referencia,
         hora_inicio=turno_in.hora_inicio,

@@ -102,3 +102,15 @@ class TurnoRepository(ABC):
         Atualiza um turno existente.
         """
         pass
+
+    @abstractmethod
+    async def contar_por_periodo(
+        self,
+        telegram_user_id: int,
+        inicio: date,
+        fim: date,
+    ) -> int:
+        """
+        Conta o número de turnos em um período.
+        """
+        pass

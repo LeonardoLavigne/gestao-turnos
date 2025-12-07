@@ -14,6 +14,9 @@ class Settings(BaseSettings):
     database_url: Optional[str] = None
     sqlite_path: str = "data/gestao_turnos.db"
     
+    # Logic
+    free_tier_max_shifts: int = 30
+    
     # Stripe Configuration
     stripe_api_key: str = ""
     stripe_webhook_secret: str = ""

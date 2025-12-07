@@ -1,7 +1,7 @@
 from datetime import date
 from typing import List, Optional
 
-from sqlalchemy import select
+from sqlalchemy import select, func
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from sqlalchemy.orm import selectinload
@@ -172,3 +172,18 @@ class SqlAlchemyTurnoRepository(TurnoRepository):
         await self.session.flush()
         await self.session.refresh(db_turno)
         return self._to_entity(db_turno)
+
+    async def contar_por_periodo(
+        self,
+        telegram_user_id: int,
+        inicio: date,
+        fim: date,
+    ) -> int:
+        stmt = (
+            select(func.count())
+            .select_from(models.Turno)
+            .where(models.Turno.telegram_user_id == telegram_user_id)
+            .where(models.Turno.data_referencia >= inicio)
+            .where(models.Turno.data_referencia <= fim)
+        )
+        return await self.session.scalar(stmt) or 0

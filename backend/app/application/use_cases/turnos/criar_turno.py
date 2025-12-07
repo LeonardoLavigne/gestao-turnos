@@ -3,9 +3,13 @@ Use case for creating a new Turno.
 """
 from datetime import date, time
 from typing import Optional
+import calendar
 
 from app.domain.entities.turno import Turno
 from app.domain.repositories.turno_repository import TurnoRepository
+from app.domain.repositories.assinatura_repository import AssinaturaRepository
+from app.domain.exceptions.freemium_exception import LimiteTurnosExcedidoException
+from app.config import get_settings
 
 
 class CriarTurnoUseCase:
@@ -16,8 +20,9 @@ class CriarTurnoUseCase:
     including duration calculation, validation, and CalDAV sync.
     """
 
-    def __init__(self, turno_repository: TurnoRepository, session):
+    def __init__(self, turno_repository: TurnoRepository, assinatura_repository: AssinaturaRepository, session):
         self.turno_repository = turno_repository
+        self.assinatura_repository = assinatura_repository
         # Session is treated as a Unit of Work here
         self.session = session
 
@@ -33,6 +38,21 @@ class CriarTurnoUseCase:
         """
         Creates a new turno asynchronously.
         """
+        # 0. Check Freemium Limits
+        assinatura = await self.assinatura_repository.get_by_user_id(telegram_user_id)
+        if assinatura and assinatura.is_free:
+            settings = get_settings()
+            
+            # Determine start/end of the month for data_referencia
+            start_date = data_referencia.replace(day=1)
+            _, last_day = calendar.monthrange(data_referencia.year, data_referencia.month)
+            end_date = data_referencia.replace(day=last_day)
+            
+            count = await self.turno_repository.contar_por_periodo(telegram_user_id, start_date, end_date)
+            
+            if count >= settings.free_tier_max_shifts:
+                raise LimiteTurnosExcedidoException(settings.free_tier_max_shifts, count)
+
         # 1. Create Entity (Business Logic)
         turno = Turno.criar(
             telegram_user_id=telegram_user_id,

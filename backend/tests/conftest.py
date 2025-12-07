@@ -3,6 +3,7 @@ from sqlalchemy import text
 from sqlalchemy.ext.asyncio import create_async_engine, async_sessionmaker, AsyncSession
 from sqlalchemy.engine import make_url
 from fastapi.testclient import TestClient
+from httpx import AsyncClient, ASGITransport
 from app.config import get_settings
 from app.main import app
 
@@ -10,6 +11,13 @@ from app.main import app
 def client():
     """TestClient para FastAPI."""
     return TestClient(app)
+
+@pytest.fixture
+async def async_client():
+    """AsyncClient para FastAPI."""
+    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as ac:
+        yield ac
+
 
 @pytest.fixture
 async def db_engine():

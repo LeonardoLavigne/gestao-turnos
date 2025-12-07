@@ -1,6 +1,7 @@
 
 import pytest
 from app import crud, models, schemas
+from app.config import get_settings
 from sqlalchemy import text, select
 from datetime import datetime
 
@@ -49,7 +50,10 @@ async def test_get_usuario_com_plano(db_session_rls, client): # Assuming client 
     
     response = client.get(
         f"/usuarios/{telegram_id}",
-        headers={"X-Telegram-User-ID": str(telegram_id)}
+        headers={
+            "X-Telegram-User-ID": str(telegram_id),
+            "X-Internal-Secret": get_settings().internal_api_key
+        }
     )
     
     assert response.status_code == 200

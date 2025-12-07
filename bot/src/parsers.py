@@ -143,6 +143,8 @@ def parse_mes_arg(arg: str) -> tuple[int, int | None]:
             
     # Try integer
     if arg.isdigit():
-        return int(arg), None
+        num = int(arg)
+        if 1 <= num <= 12:
+            return num, None
         
     raise ValueError(f"Mês inválido: {arg}")
