@@ -8,6 +8,7 @@ import { useMutation, useQueryClient } from '@tanstack/react-query';
 import api from '@/lib/api';
 
 import { Button } from '@/components/ui/button';
+import { AxiosError } from 'axios';
 import {
     Dialog,
     DialogContent,
@@ -80,8 +81,7 @@ export function NovoTurnoDialog() {
         onError: (error: unknown) => {
             console.error("Erro ao criar turno:", error);
             // Melhorar mensagem de erro baseada no status
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            const msg = (error as any).response?.status === 403
+            const msg = (error as AxiosError).response?.status === 403
                 ? "Limite do plano grátis atingido."
                 : "Erro ao criar turno. Verifique os dados.";
             alert(msg);
