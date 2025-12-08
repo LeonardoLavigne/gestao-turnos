@@ -5,18 +5,37 @@ from app.application.use_cases.turnos.criar_turno import CriarTurnoUseCase
 from app.domain.entities.turno import Turno
 from app.domain.entities.assinatura import Assinatura
 from app.domain.exceptions.freemium_exception import LimiteTurnosExcedidoException
+from app.domain.uow import AbstractUnitOfWork
 
 @pytest.fixture
 def mock_turno_repo():
     repo = AsyncMock()
-    # Setup default return for criar to return the input turno (mock persistence)
     repo.criar.side_effect = lambda t: t
     repo.atualizar.side_effect = lambda t: t
+    repo.buscar_tipo_por_nome = AsyncMock(return_value=None)
     return repo
 
 @pytest.fixture
 def mock_assinatura_repo():
     return AsyncMock()
+
+class MockUoW(AbstractUnitOfWork):
+    def __init__(self, turno_repo, assinatura_repo):
+        self.turnos = turno_repo
+        self.assinaturas = assinatura_repo
+        self.usuarios = AsyncMock() # Default mock for unused repo
+    
+    async def __aenter__(self):
+        return self
+    
+    async def __aexit__(self, *args):
+        pass
+        
+    async def commit(self):
+        pass
+        
+    async def rollback(self):
+        pass
 
 @pytest.fixture
 def mock_settings(monkeypatch):
@@ -29,9 +48,9 @@ def mock_settings(monkeypatch):
 
 @pytest.fixture
 def use_case(mock_turno_repo, mock_assinatura_repo):
-    session = AsyncMock() # Mock Unit of Work session
+    uow = MockUoW(mock_turno_repo, mock_assinatura_repo)
     mock_calendar_service = MagicMock()
-    return CriarTurnoUseCase(mock_turno_repo, mock_assinatura_repo, mock_calendar_service, session)
+    return CriarTurnoUseCase(uow, mock_calendar_service)
 
 @pytest.mark.asyncio
 async def test_create_shift_free_user_within_limit(use_case, mock_assinatura_repo, mock_turno_repo, mock_settings, monkeypatch):

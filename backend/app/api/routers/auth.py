@@ -21,14 +21,17 @@ class TelegramAuthSchema(BaseModel):
     auth_date: int
     hash: str
 
+from fastapi import Response
+
 @router.post("/login", summary="Login via Telegram Login Widget")
 async def login_telegram(
+    response: Response,
     auth_data: TelegramAuthSchema,
     usuario_repo: SqlAlchemyUsuarioRepository = Depends(get_usuario_repo),
     criar_usuario_use_case = Depends(get_criar_usuario_use_case)
 ):
     """
-    Validates Telegram Login data and returns a JWT Access Token.
+    Validates Telegram Login data and returns a JWT Access Token via HttpOnly Cookie.
     1. Validates the hash provided by Telegram.
     2. Checks if data is recent (prevent replay attacks).
     3. Issues JWT for the user.
@@ -70,9 +73,18 @@ async def login_telegram(
 
     access_token = create_access_token(subject=auth_data.id)
     
+    # Set HttpOnly Cookie
+    response.set_cookie(
+        key="auth_token",
+        value=access_token,
+        httponly=True,
+        secure=False, # Set to True in Production (TLS)
+        samesite="lax",
+        max_age=60 * 60 * 24 * 7 # 7 days
+    )
+    
     return {
-        "access_token": access_token,
-        "token_type": "bearer",
+        "message": "Login successful",
         "user": {
             "id": auth_data.id,
             "first_name": auth_data.first_name,

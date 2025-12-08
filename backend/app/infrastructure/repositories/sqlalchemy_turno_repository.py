@@ -6,6 +6,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from sqlalchemy.orm import selectinload
 from app.domain.entities.turno import Turno
+from app.domain.entities.tipo_turno import TipoTurno
 from app.domain.repositories.turno_repository import TurnoRepository
 from app.infrastructure.database import models
 
@@ -27,36 +28,39 @@ class SqlAlchemyTurnoRepository(TurnoRepository):
             hora_fim=model.hora_fim,
             duracao_minutos=model.duracao_minutos,
             tipo=model.tipo.nome if model.tipo else model.tipo_livre,
+            tipo_id=model.tipo_turno_id,
             descricao_opcional=model.descricao_opcional,
             event_uid=model.integracao.event_uid if model.integracao else None,
             criado_em=model.criado_em,
             atualizado_em=model.atualizado_em,
         )
 
+    async def buscar_tipo_por_nome(self, nome: str) -> Optional[TipoTurno]:
+        stmt = select(models.TipoTurno).where(models.TipoTurno.nome.ilike(nome))
+        result = await self.session.scalar(stmt)
+        if result:
+            return TipoTurno(id=result.id, nome=result.nome)
+        return None
+
     async def criar(self, turno: Turno) -> Turno:
-        # TODO: Lookup TipoTurno logic if needed, but for now using tipo_livre primarily
-        # unless name matches existing type.
+        # Repositório burro: Apenas persiste o que recebe.
+        # A lógica de decidir se usa tipo_id ou tipo_livre já foi feita no UseCase.
         
-        tipo_db = None
-        tipo_livre = None
+        tipo_id_val = turno.tipo_id
+        tipo_livre_val = None
         
-        if turno.tipo:
-            # Tenta buscar tipo existente pelo nome (case insensitive)
-            stmt = select(models.TipoTurno).where(
-                models.TipoTurno.nome.ilike(turno.tipo)
-            )
-            tipo_db = await self.session.scalar(stmt)
-            if not tipo_db:
-                tipo_livre = turno.tipo
-        
+        if not tipo_id_val and turno.tipo:
+            # Se não tem ID mas tem texto, salva como livre
+            tipo_livre_val = turno.tipo
+
         db_turno = models.Turno(
             telegram_user_id=turno.telegram_user_id,
             data_referencia=turno.data_referencia,
             hora_inicio=turno.hora_inicio,
             hora_fim=turno.hora_fim,
             duracao_minutos=turno.duracao_minutos,
-            tipo=tipo_db,
-            tipo_livre=tipo_livre,
+            tipo_turno_id=tipo_id_val,
+            tipo_livre=tipo_livre_val,
             descricao_opcional=turno.descricao_opcional,
         )
         
@@ -79,7 +83,7 @@ class SqlAlchemyTurnoRepository(TurnoRepository):
             hora_inicio=db_turno.hora_inicio,
             hora_fim=db_turno.hora_fim,
             duracao_minutos=db_turno.duracao_minutos,
-            tipo=tipo_db.nome if tipo_db else turno.tipo, # Usa o objeto que já temos ou a string original
+            tipo=turno.tipo, # Usa o que foi passado e persistido (sem lazy load agora)
             descricao_opcional=db_turno.descricao_opcional,
             event_uid=None, # New turn has no event_uid yet until updated
             criado_em=db_turno.criado_em,

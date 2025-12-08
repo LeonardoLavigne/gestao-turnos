@@ -33,6 +33,7 @@ class Turno:
     tipo: Optional[str] = None
     descricao_opcional: Optional[str] = None
     id: Optional[int] = None
+    tipo_id: Optional[int] = None
     event_uid: Optional[str] = None
     criado_em: Optional[datetime] = None
     atualizado_em: Optional[datetime] = None

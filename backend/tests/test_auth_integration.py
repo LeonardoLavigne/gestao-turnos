@@ -40,8 +40,11 @@ async def test_auth_login_success(monkeypatch):
             response = await ac.post("/auth/login", json=auth_data)
             
     assert response.status_code == 200
+    # Access token is now in HttpOnly Cookie
+    assert "auth_token" in response.cookies
+    assert response.cookies["auth_token"] is not None
+    
     data = response.json()
-    assert "access_token" in data
     assert data["user"]["id"] == 123456
 
 @pytest.mark.asyncio

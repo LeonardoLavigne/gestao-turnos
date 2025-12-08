@@ -4,6 +4,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.infrastructure.database.session import get_db
 from app.core.config import get_settings
 from app.core.security import verify_token
+from app.infrastructure.database.uow import SqlAlchemyUnitOfWork
+from app.domain.uow import AbstractUnitOfWork
 
 # Repositories
 from app.infrastructure.repositories.sqlalchemy_turno_repository import SqlAlchemyTurnoRepository
@@ -46,15 +48,20 @@ def get_current_user_id(
         if user_id_header:
             return int(user_id_header)
 
-    # 2. Estratégia WEB (JWT)
-    if token:
-        payload = verify_token(token)
+    # 2. Estratégia WEB (JWT via Header ou Cookie)
+    token_to_verify = token
+    if not token_to_verify:
+        token_to_verify = request.cookies.get("auth_token")
+
+    if token_to_verify:
+        payload = verify_token(token_to_verify)
         if payload:
             user_id = payload.get("sub")
             if user_id:
                 return int(user_id)
 
     raise HTTPException(status_code=401, detail="Não autenticado")
+
 
 # Repository Providers
 def get_turno_repo(db: AsyncSession = Depends(get_db)) -> SqlAlchemyTurnoRepository:
@@ -73,14 +80,17 @@ def get_calendar_service() -> CalendarService:
 def get_relatorio_service() -> RelatorioService:
     return ReportLabPdfService()
 
+
+
+def get_uow(db: AsyncSession = Depends(get_db)) -> SqlAlchemyUnitOfWork:
+    return SqlAlchemyUnitOfWork(db)
+
 # Use Case Factories
 def get_criar_turno_use_case(
-    db: AsyncSession = Depends(get_db),
-    turno_repo: SqlAlchemyTurnoRepository = Depends(get_turno_repo),
-    assinatura_repo: SqlAlchemyAssinaturaRepository = Depends(get_assinatura_repo),
+    uow: AbstractUnitOfWork = Depends(get_uow),
     calendar_service: CalendarService = Depends(get_calendar_service),
 ) -> CriarTurnoUseCase:
-    return CriarTurnoUseCase(turno_repo, assinatura_repo, calendar_service, db)
+    return CriarTurnoUseCase(uow, calendar_service)
 
 def get_listar_turnos_periodo_use_case(
     turno_repo: SqlAlchemyTurnoRepository = Depends(get_turno_repo),
@@ -93,10 +103,9 @@ def get_listar_turnos_recentes_use_case(
     return ListarTurnosRecentesUseCase(turno_repo)
 
 def get_deletar_turno_use_case(
-    db: AsyncSession = Depends(get_db),
-    turno_repo: SqlAlchemyTurnoRepository = Depends(get_turno_repo),
+    uow: AbstractUnitOfWork = Depends(get_uow),
 ) -> DeletarTurnoUseCase:
-    return DeletarTurnoUseCase(turno_repo, db)
+    return DeletarTurnoUseCase(uow)
 
 def get_criar_usuario_use_case(
     usuario_repo: SqlAlchemyUsuarioRepository = Depends(get_usuario_repo),

@@ -8,6 +8,7 @@ from datetime import date
 from typing import List, Optional
 
 from app.domain.entities.turno import Turno
+from app.domain.entities.tipo_turno import TipoTurno
 
 
 class TurnoRepository(ABC):
@@ -112,5 +113,12 @@ class TurnoRepository(ABC):
     ) -> int:
         """
         Conta o número de turnos em um período.
+        """
+        pass
+
+    @abstractmethod
+    async def buscar_tipo_por_nome(self, nome: str) -> Optional[TipoTurno]:
+        """
+        Busca um tipo de turno pelo nome.
         """
         pass
