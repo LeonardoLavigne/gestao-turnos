@@ -55,7 +55,7 @@ export function TelegramLoginWidget({ onLoginSuccess }: TelegramLoginWidgetProps
         return () => {
             // Cleanup global callback if component unmounts
             if ((window as unknown as { onTelegramAuth?: (user: TelegramUser) => void }).onTelegramAuth === onLoginSuccess) {
-                delete (window as unknown as { onTelegramAuth: (user: TelegramUser) => void }).onTelegramAuth;
+                delete (window as unknown as { onTelegramAuth?: (user: TelegramUser) => void }).onTelegramAuth;
             }
         };
     }, [onLoginSuccess]); // Only recreate effect if onLoginSuccess changes, which it shouldn't for a fixed callback

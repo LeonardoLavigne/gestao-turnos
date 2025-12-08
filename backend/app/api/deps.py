@@ -125,10 +125,9 @@ def get_deletar_turno_use_case(
     return DeletarTurnoUseCase(uow)
 
 def get_criar_usuario_use_case(
-    usuario_repo: SqlAlchemyUsuarioRepository = Depends(get_usuario_repo),
-    assinatura_repo: SqlAlchemyAssinaturaRepository = Depends(get_assinatura_repo),
+    uow: AbstractUnitOfWork = Depends(get_uow),
 ) -> CriarUsuarioUseCase:
-    return CriarUsuarioUseCase(usuario_repo, assinatura_repo)
+    return CriarUsuarioUseCase(uow)
 
 def get_atualizar_usuario_use_case(
     usuario_repo: SqlAlchemyUsuarioRepository = Depends(get_usuario_repo),

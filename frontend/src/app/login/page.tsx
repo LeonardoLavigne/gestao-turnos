@@ -1,12 +1,10 @@
 'use client';
 
 import { useState } from 'react';
-import { useRouter } from 'next/navigation';
 import api from '@/lib/api';
 import { TelegramLoginWidget } from '@/components/auth/TelegramLoginWidget'; // Importar o novo componente
 
 export default function LoginPage() {
-    const router = useRouter();
     const [error, setError] = useState<string | null>(null);
     const [loading, setLoading] = useState(false); // Manter o loading para o estado de login pós-widget
 
@@ -14,7 +12,8 @@ export default function LoginPage() {
         setLoading(true);
         try {
             await api.post('/auth/login', user);
-            router.push('/dashboard');
+            // Force hard redirect to ensure cookies are sent and middleware runs
+            window.location.href = '/dashboard';
         } catch (err: unknown) {
             console.error("Login failed", err);
             setError("Falha na autenticação. Tente novamente.");

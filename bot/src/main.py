@@ -12,8 +12,28 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 from src.config import get_settings
+import socket
+import time
+
+def wait_for_internet(host="api.telegram.org", port=443, timeout=5):
+    """Aguardar conexão com a internet antes de iniciar."""
+    logger.info(f"Aguardando resolução de DNS para {host}...")
+    while True:
+        try:
+            _ = socket.getaddrinfo(host, port, proto=socket.IPPROTO_TCP)
+            logger.info("DNS resolvido com sucesso.")
+            break
+        except socket.gaierror:
+            logger.warning("Falha temporária no DNS, aguardando 2 segundos...")
+            time.sleep(2)
+        except Exception as e:
+            logger.warning(f"Erro ao verificar conexão: {e}, aguardando 2 segundos...")
+            time.sleep(2)
+
+
 
 if __name__ == "__main__":
+    wait_for_internet()
     logger.info("Iniciando Bot Telegram...")
     application = build_application()
     settings = get_settings()

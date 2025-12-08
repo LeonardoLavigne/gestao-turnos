@@ -27,6 +27,8 @@ interface User {
     username?: string;
     telegram_user_id: number;
     assinatura_plano: string;
+    assinatura_status?: string;
+    assinatura_data_fim?: string;
     turnos_registrados_mes_atual?: number;
 }
 
@@ -59,14 +61,25 @@ export default function Dashboard() {
     });
 
     // Error Handling with Toast
+    const handleLogout = async () => {
+        try {
+            await api.post('/auth/logout');
+        } catch (error) {
+            console.error("Logout failed", error);
+        }
+        localStorage.removeItem('token');
+        localStorage.removeItem('user');
+        router.push('/login');
+    };
+
+    // Error Handling with Toast & Zombie Session Fix
     useEffect(() => {
         if (userError) {
             const err = userError as AxiosError;
-            if (err.response?.status === 401) {
-                // Token has expired or is invalid
-                localStorage.removeItem('token');
-                localStorage.removeItem('user');
-                router.push('/login');
+            // 401: Token invalid/expired
+            // 404: User deleted (Zombie Session)
+            if (err.response?.status === 401 || err.response?.status === 404) {
+                handleLogout();
             } else {
                 toast.error("Erro ao carregar perfil. Tente recarregar a página.");
             }
@@ -75,14 +88,6 @@ export default function Dashboard() {
             toast.error("Não foi possível carregar os turnos.");
         }
     }, [userError, turnosError, router]);
-
-    const handleLogout = () => {
-        // HttpOnly cookies cannot be removed by client-side JS.
-        // TODO: Call backend /auth/logout to clear cookie.
-        localStorage.removeItem('token');
-        localStorage.removeItem('user');
-        router.push('/login');
-    };
 
     if (loadingUser) {
         return (

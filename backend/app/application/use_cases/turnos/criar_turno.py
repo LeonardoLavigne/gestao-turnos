@@ -11,6 +11,8 @@ from app.domain.uow import AbstractUnitOfWork
 from app.domain.services.calendar_service import CalendarService
 
 logger = logging.getLogger(__name__)
+from datetime import datetime, UTC
+from app.domain.entities.assinatura import Assinatura, AssinaturaStatus, PlanoType
 from app.domain.exceptions.freemium_exception import LimiteTurnosExcedidoException
 from app.core.config import Settings
 from app.domain.ports.caldav_sync_port import CalDavSyncTaskPort
@@ -51,7 +53,30 @@ class CriarTurnoUseCase:
         """
         async with self.uow:
             # 0. Check Freemium Limits
-            assinatura = await self.uow.assinaturas.get_by_user_id(telegram_user_id)
+            # Lock row to prevent race condition
+            assinatura = await self.uow.assinaturas.get_by_user_id(telegram_user_id, for_update=True)
+            
+            # 0.1 If Legacy User (no signature), create default FREE one now to enable locking/checking
+            if not assinatura:
+                logger.info(f"Usuário {telegram_user_id} sem assinatura (legacy). Criando assinatura FREE padrão.")
+                agora = datetime.now(UTC)
+                nova_assinatura = Assinatura(
+                    id=None, # DB will generate
+                    telegram_user_id=telegram_user_id,
+                    stripe_customer_id=f"legacy_{telegram_user_id}", # Placeholder
+                    stripe_subscription_id=None,
+                    status=AssinaturaStatus.ACTIVE.value,
+                    plano=PlanoType.FREE.value,
+                    data_inicio=agora,
+                    data_fim=None,
+                    criado_em=agora,
+                    atualizado_em=agora,
+                )
+                assinatura = await self.uow.assinaturas.criar(nova_assinatura)
+                # Note: 'criar' usually does flush/refresh, so we get the ID and it's part of the transaction.
+                # Since we are in the same transaction, we effectively hold the lock on this new row if we were to select it again,
+                # but since we just created it, no one else could have it yet (or they would have blocked us on insert if unique constraint exists).
+            
             if assinatura and assinatura.is_free:
                 
                 # Determine start/end of the month for data_referencia

@@ -82,6 +82,7 @@ async def get_usuario(
     if assinatura:
         usuario_read.assinatura_status = assinatura.status
         usuario_read.assinatura_plano = assinatura.plano
+        usuario_read.assinatura_data_fim = assinatura.data_fim
     
     return usuario_read
 

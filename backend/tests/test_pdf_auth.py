@@ -21,7 +21,7 @@ async def test_pdf_endpoint_forbidden_for_free_user():
     
     # 1. Prepare Mock Repo
     mock_repo = AsyncMock()
-    mock_repo.get_by_user_id.return_value = Assinatura(
+    mock_repo.get_by_user_id.side_effect = lambda *args, **kwargs: Assinatura(
         id=1, telegram_user_id=123, stripe_customer_id="cust_1", stripe_subscription_id=None,
         status=AssinaturaStatus.ACTIVE, plano=PlanoType.FREE, 
         data_inicio=None, data_fim=None, criado_em=None, atualizado_em=None
@@ -54,7 +54,7 @@ async def test_pdf_endpoint_allowed_for_pro_user():
     
     # 1. Mock AssinaturaRepository (Pro)
     mock_assinatura_repo = AsyncMock()
-    mock_assinatura_repo.get_by_user_id.return_value = Assinatura(
+    mock_assinatura_repo.get_by_user_id.side_effect = lambda *args, **kwargs: Assinatura(
         id=1, telegram_user_id=456, stripe_customer_id="cust_2", stripe_subscription_id="sub_2",
         status=AssinaturaStatus.ACTIVE, plano=PlanoType.PRO, 
         data_inicio=None, data_fim=None, criado_em=None, atualizado_em=None

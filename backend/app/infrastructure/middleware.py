@@ -68,8 +68,8 @@ class InternalSecurityMiddleware(BaseHTTPMiddleware):
         if secret and secrets.compare_digest(secret, settings.internal_api_key):
              return await call_next(request)
              
-        # 2b. Se tem Authorization header, passa (Web - validação real será no endpoint via deps)
-        if request.headers.get("Authorization"):
+        # 2b. Se tem Authorization header ou Cookie de auth, passa (Web - validação real será no endpoint via deps)
+        if request.headers.get("Authorization") or request.cookies.get("auth_token"):
             return await call_next(request)
         
         # 3. Bloquear se não tem nenhum dos dois

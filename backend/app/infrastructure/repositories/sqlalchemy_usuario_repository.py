@@ -55,7 +55,7 @@ class SqlAlchemyUsuarioRepository(UsuarioRepository):
         """Persiste um novo usuário."""
         model = self._to_model(usuario)
         self.session.add(model)
-        await self.session.commit()
+        await self.session.flush()
         await self.session.refresh(model)
         return self._to_entity(model)
 
@@ -71,7 +71,9 @@ class SqlAlchemyUsuarioRepository(UsuarioRepository):
         model.nome = usuario.nome
         model.numero_funcionario = usuario.numero_funcionario
         
-        await self.session.commit()
+        model.numero_funcionario = usuario.numero_funcionario
+        
+        await self.session.flush()
         await self.session.refresh(model)
         return self._to_entity(model)
 

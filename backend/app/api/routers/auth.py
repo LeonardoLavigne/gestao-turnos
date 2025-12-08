@@ -91,3 +91,11 @@ async def login_telegram(
             "username": auth_data.username
         }
     }
+
+@router.post("/logout", summary="Logout user")
+async def logout(response: Response):
+    """
+    Clears the auth_token cookie.
+    """
+    response.delete_cookie("auth_token")
+    return {"message": "Logged out successfully"}

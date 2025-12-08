@@ -24,10 +24,13 @@ class SqlAlchemyAssinaturaRepository(AssinaturaRepository):
             atualizado_em=model.atualizado_em,
         )
 
-    async def get_by_user_id(self, telegram_user_id: int) -> Optional[Assinatura]:
+    async def get_by_user_id(self, telegram_user_id: int, for_update: bool = False) -> Optional[Assinatura]:
         stmt = select(models.Assinatura).where(
             models.Assinatura.telegram_user_id == telegram_user_id
         )
+        if for_update:
+            stmt = stmt.with_for_update()
+            
         result = await self.session.scalar(stmt)
         if not result:
             return None
