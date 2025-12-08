@@ -43,7 +43,8 @@ async def test_caldav_sync_skipped_for_free_user(mock_repo, mock_assinatura_repo
     mock_calendar_service = MagicMock()
     mock_settings = MagicMock()
     mock_settings.free_tier_max_shifts = 10
-    use_case = CriarTurnoUseCase(uow, mock_calendar_service, mock_settings)
+    mock_bg_queue = MagicMock()
+    use_case = CriarTurnoUseCase(uow, mock_calendar_service, mock_settings, mock_bg_queue)
     
     # Mock Free Assinatura
     free_assinatura = Assinatura(
@@ -58,7 +59,8 @@ async def test_caldav_sync_skipped_for_free_user(mock_repo, mock_assinatura_repo
     await use_case.execute(123, date(2025, 1, 1), time(8, 0), time(16, 0), "Hospital")
     
     # Assert
-    mock_calendar_service.sync_event.assert_not_called()
+    # Sync is skipped (Free User)
+    mock_bg_queue.add_task.assert_not_called()
     mock_repo.criar.assert_called_once()
 
 
@@ -69,7 +71,8 @@ async def test_caldav_sync_called_for_pro_user(mock_repo, mock_assinatura_repo):
     mock_calendar_service = MagicMock()
     mock_settings = MagicMock()
     mock_settings.free_tier_max_shifts = 10
-    use_case = CriarTurnoUseCase(uow, mock_calendar_service, mock_settings)
+    mock_bg_queue = MagicMock()
+    use_case = CriarTurnoUseCase(uow, mock_calendar_service, mock_settings, mock_bg_queue)
     
      # Mock Pro Assinatura
     pro_assinatura = Assinatura(
@@ -84,5 +87,6 @@ async def test_caldav_sync_called_for_pro_user(mock_repo, mock_assinatura_repo):
     await use_case.execute(123, date(2025, 1, 1), time(8, 0), time(16, 0), "Hospital")
     
     # Assert
-    mock_calendar_service.sync_event.assert_called_once()
+    # Sync is called (Pro User) via BackgroundQueue
+    mock_bg_queue.add_task.assert_called_once()
     mock_repo.criar.assert_called_once()

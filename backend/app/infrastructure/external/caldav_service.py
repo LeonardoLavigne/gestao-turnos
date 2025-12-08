@@ -8,26 +8,27 @@ import caldav
 from caldav import DAVClient
 from icalendar import Calendar, Event
 
-from app.core.config import get_settings
+from app.core.config import Settings
 from app.domain.services.calendar_service import CalendarService
 from app.domain.entities.turno import Turno
 
 class CalDAVService(CalendarService):
+    def __init__(self, settings: Settings):
+        self.settings = settings
+
     def _get_client(self) -> DAVClient:
-        settings = get_settings()
-        url = settings.caldav_url.rstrip("/")
+        url = self.settings.caldav_url.rstrip("/")
         return DAVClient(
             url=url,
-            username=settings.caldav_username,
-            password=settings.caldav_password,
+            username=self.settings.caldav_username,
+            password=self.settings.caldav_password,
         )
 
     def _get_calendar(self) -> caldav.Calendar:
-        settings = get_settings()
         client = self._get_client()
         principal = client.principal()
         for cal in principal.calendars():
-            if settings.caldav_calendar_path and settings.caldav_calendar_path in str(
+            if self.settings.caldav_calendar_path and self.settings.caldav_calendar_path in str(
                 cal.url
             ):
                 return cal
@@ -38,8 +39,7 @@ class CalDAVService(CalendarService):
         cal.add("prodid", "-//gestao-turnos//pt-BR")
         cal.add("version", "2.0")
 
-        settings = get_settings()
-        tz = ZoneInfo(settings.timezone)
+        tz = ZoneInfo(self.settings.timezone)
 
         dt_start = datetime.combine(turno.data_referencia, turno.hora_inicio).replace(
             tzinfo=tz

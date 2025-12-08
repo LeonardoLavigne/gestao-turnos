@@ -2,7 +2,7 @@ from fastapi import Depends, Request, HTTPException
 from fastapi.security import OAuth2PasswordBearer
 from sqlalchemy.ext.asyncio import AsyncSession
 from app.infrastructure.database.session import get_db
-from app.core.config import get_settings
+from app.core.config import get_settings, Settings
 from app.core.security import verify_token
 from app.infrastructure.database.uow import SqlAlchemyUnitOfWork
 from app.domain.uow import AbstractUnitOfWork
@@ -74,8 +74,8 @@ def get_assinatura_repo(db: AsyncSession = Depends(get_db)) -> SqlAlchemyAssinat
     return SqlAlchemyAssinaturaRepository(db)
 
 # Service Providers
-def get_calendar_service() -> CalendarService:
-    return CalDAVService()
+def get_calendar_service(settings: Settings = Depends(get_settings)) -> CalendarService:
+    return CalDAVService(settings)
 
 def get_relatorio_service() -> RelatorioService:
     return ReportLabPdfService()
@@ -85,15 +85,18 @@ def get_relatorio_service() -> RelatorioService:
 def get_uow(db: AsyncSession = Depends(get_db)) -> SqlAlchemyUnitOfWork:
     return SqlAlchemyUnitOfWork(db)
 
-from app.core.config import Settings, get_settings
+from app.infrastructure.background_adapter import FastAPIBackgroundTaskQueue
+from fastapi import BackgroundTasks
 
 # Use Case Factories
 def get_criar_turno_use_case(
+    background_tasks: BackgroundTasks,
     uow: AbstractUnitOfWork = Depends(get_uow),
     calendar_service: CalendarService = Depends(get_calendar_service),
     settings: Settings = Depends(get_settings),
 ) -> CriarTurnoUseCase:
-    return CriarTurnoUseCase(uow, calendar_service, settings)
+    bg_queue = FastAPIBackgroundTaskQueue(background_tasks)
+    return CriarTurnoUseCase(uow, calendar_service, settings, bg_queue)
 
 def get_listar_turnos_periodo_use_case(
     turno_repo: SqlAlchemyTurnoRepository = Depends(get_turno_repo),

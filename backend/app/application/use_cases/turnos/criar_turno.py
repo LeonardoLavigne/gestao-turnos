@@ -13,6 +13,8 @@ from app.domain.services.calendar_service import CalendarService
 logger = logging.getLogger(__name__)
 from app.domain.exceptions.freemium_exception import LimiteTurnosExcedidoException
 from app.core.config import Settings
+from app.domain.ports.background import BackgroundTaskQueue
+from app.infrastructure.tasks.caldav import sync_turn_caldav_background
 
 
 class CriarTurnoUseCase:
@@ -28,10 +30,12 @@ class CriarTurnoUseCase:
         uow: AbstractUnitOfWork,
         calendar_service: CalendarService,
         settings: Settings,
+        bg_queue: BackgroundTaskQueue,
     ):
         self.uow = uow
         self.calendar_service = calendar_service
         self.settings = settings
+        self.bg_queue = bg_queue
 
     async def execute(
         self,
@@ -75,27 +79,16 @@ class CriarTurnoUseCase:
                 tipo_existente = await self.uow.turnos.buscar_tipo_por_nome(tipo)
                 if tipo_existente:
                     turno.tipo_id = tipo_existente.id
-                    # We keep turno.tipo as string for display/fallback, but ID takes precedence in persistence
             
             # 2. Persist (Infrastructure)
             saved_turno = await self.uow.turnos.criar(turno)
             
-            # 3. CalDAV Integration (Injected Logic)
-            # Only sync if user is NOT Free (Premium feature)
-            if assinatura and not assinatura.is_free:
-                try:
-                    # Use abstraction, no infrastructure import here
-                    new_uid = self.calendar_service.sync_event(saved_turno)
-                    if new_uid:
-                        saved_turno.event_uid = new_uid
-                        
-                        # 4. Update with UID if needed
-                        saved_turno = await self.uow.turnos.atualizar(saved_turno)
-                except Exception as e:
-                    logger.error(f"Failed to sync CalDAV for turno {saved_turno.id}: {e}", exc_info=True)
-                    # Integration failure should be non-blocking for shift creation
-                
-            # 5. Commit Transaction
+            # 3. Commit Transaction (Must commit to get ID before background task usually)
+            # UoW commit does flush and commit.
             await self.uow.commit()
+
+            # 4. CalDAV Integration (Background)
+            if assinatura and not assinatura.is_free:
+                self.bg_queue.add_task(sync_turn_caldav_background, saved_turno.id)
             
             return saved_turno

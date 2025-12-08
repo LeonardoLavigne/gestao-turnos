@@ -53,7 +53,9 @@ def use_case(mock_uow, mock_settings):
     mock_calendar = MagicMock()
     mock_calendar.sync_event.return_value = "new-caldav-uid"
     
-    return CriarTurnoUseCase(mock_uow, mock_calendar, mock_settings)
+    mock_bg_queue = MagicMock()
+    
+    return CriarTurnoUseCase(mock_uow, mock_calendar, mock_settings, mock_bg_queue)
 
 @pytest.mark.asyncio
 async def test_create_shift_free_user_within_limit(use_case, mock_assinatura_repo, mock_turno_repo, mock_settings, monkeypatch):
