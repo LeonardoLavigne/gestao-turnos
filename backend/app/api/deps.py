@@ -85,12 +85,15 @@ def get_relatorio_service() -> RelatorioService:
 def get_uow(db: AsyncSession = Depends(get_db)) -> SqlAlchemyUnitOfWork:
     return SqlAlchemyUnitOfWork(db)
 
+from app.core.config import Settings, get_settings
+
 # Use Case Factories
 def get_criar_turno_use_case(
     uow: AbstractUnitOfWork = Depends(get_uow),
     calendar_service: CalendarService = Depends(get_calendar_service),
+    settings: Settings = Depends(get_settings),
 ) -> CriarTurnoUseCase:
-    return CriarTurnoUseCase(uow, calendar_service)
+    return CriarTurnoUseCase(uow, calendar_service, settings)
 
 def get_listar_turnos_periodo_use_case(
     turno_repo: SqlAlchemyTurnoRepository = Depends(get_turno_repo),

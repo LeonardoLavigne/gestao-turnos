@@ -41,7 +41,9 @@ async def test_caldav_sync_skipped_for_free_user(mock_repo, mock_assinatura_repo
     # Setup
     uow = MockUoW(mock_repo, mock_assinatura_repo)
     mock_calendar_service = MagicMock()
-    use_case = CriarTurnoUseCase(uow, mock_calendar_service)
+    mock_settings = MagicMock()
+    mock_settings.free_tier_max_shifts = 10
+    use_case = CriarTurnoUseCase(uow, mock_calendar_service, mock_settings)
     
     # Mock Free Assinatura
     free_assinatura = Assinatura(
@@ -65,7 +67,9 @@ async def test_caldav_sync_called_for_pro_user(mock_repo, mock_assinatura_repo):
     # Setup
     uow = MockUoW(mock_repo, mock_assinatura_repo)
     mock_calendar_service = MagicMock()
-    use_case = CriarTurnoUseCase(uow, mock_calendar_service)
+    mock_settings = MagicMock()
+    mock_settings.free_tier_max_shifts = 10
+    use_case = CriarTurnoUseCase(uow, mock_calendar_service, mock_settings)
     
      # Mock Pro Assinatura
     pro_assinatura = Assinatura(

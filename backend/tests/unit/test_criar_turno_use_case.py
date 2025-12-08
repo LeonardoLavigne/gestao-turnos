@@ -38,19 +38,22 @@ class MockUoW(AbstractUnitOfWork):
         pass
 
 @pytest.fixture
-def mock_settings(monkeypatch):
-    # Mock get_settings to return controlled limit
+def mock_uow(mock_turno_repo, mock_assinatura_repo):
+    return MockUoW(mock_turno_repo, mock_assinatura_repo)
+
+@pytest.fixture
+def mock_settings():
+    # Mock settings object to pass to constructor
     mock_settings_obj = MagicMock()
     mock_settings_obj.free_tier_max_shifts = 30
-    
-    monkeypatch.setattr("app.application.use_cases.turnos.criar_turno.get_settings", lambda: mock_settings_obj)
     return mock_settings_obj
 
 @pytest.fixture
-def use_case(mock_turno_repo, mock_assinatura_repo):
-    uow = MockUoW(mock_turno_repo, mock_assinatura_repo)
-    mock_calendar_service = MagicMock()
-    return CriarTurnoUseCase(uow, mock_calendar_service)
+def use_case(mock_uow, mock_settings):
+    mock_calendar = MagicMock()
+    mock_calendar.sync_event.return_value = "new-caldav-uid"
+    
+    return CriarTurnoUseCase(mock_uow, mock_calendar, mock_settings)
 
 @pytest.mark.asyncio
 async def test_create_shift_free_user_within_limit(use_case, mock_assinatura_repo, mock_turno_repo, mock_settings, monkeypatch):
@@ -63,7 +66,8 @@ async def test_create_shift_free_user_within_limit(use_case, mock_assinatura_rep
     )
     mock_turno_repo.contar_por_periodo.return_value = 29
     
-    mock_turno_repo.contar_por_periodo.return_value = 29
+    # Configure settings for this test
+    mock_settings.free_tier_max_shifts = 30
     
     # Mock CalDAV success handled via injection in fixture
     # But we need access to the mock inside the fixture to set result?

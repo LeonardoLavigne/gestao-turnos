@@ -12,7 +12,7 @@ from app.domain.services.calendar_service import CalendarService
 
 logger = logging.getLogger(__name__)
 from app.domain.exceptions.freemium_exception import LimiteTurnosExcedidoException
-from app.core.config import get_settings
+from app.core.config import Settings
 
 
 class CriarTurnoUseCase:
@@ -27,9 +27,11 @@ class CriarTurnoUseCase:
         self, 
         uow: AbstractUnitOfWork,
         calendar_service: CalendarService,
+        settings: Settings,
     ):
         self.uow = uow
         self.calendar_service = calendar_service
+        self.settings = settings
 
     async def execute(
         self,
@@ -47,7 +49,6 @@ class CriarTurnoUseCase:
             # 0. Check Freemium Limits
             assinatura = await self.uow.assinaturas.get_by_user_id(telegram_user_id)
             if assinatura and assinatura.is_free:
-                settings = get_settings()
                 
                 # Determine start/end of the month for data_referencia
                 start_date = data_referencia.replace(day=1)
@@ -56,8 +57,8 @@ class CriarTurnoUseCase:
                 
                 count = await self.uow.turnos.contar_por_periodo(telegram_user_id, start_date, end_date)
                 
-                if count >= settings.free_tier_max_shifts:
-                    raise LimiteTurnosExcedidoException(settings.free_tier_max_shifts, count)
+                if count >= self.settings.free_tier_max_shifts:
+                    raise LimiteTurnosExcedidoException(self.settings.free_tier_max_shifts, count)
     
             # 1. Create Entity (Business Logic)
             turno = Turno.criar(
