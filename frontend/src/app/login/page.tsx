@@ -2,7 +2,6 @@
 
 import { useEffect, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import Cookies from 'js-cookie';
 import api from '@/lib/api';
 
 interface TelegramUser {
@@ -21,16 +20,9 @@ export default function LoginPage() {
     const [loading, setLoading] = useState(false);
 
     const handleTelegramLogin = async (user: TelegramUser) => {
-        setLoading(true);
-        setError(null);
         try {
-            const response = await api.post('/auth/login', user);
-            const { access_token } = response.data;
-
-            // Salva no Cookie (para o Middleware ler)
-            Cookies.set('auth_token', access_token, { expires: 7, path: '/' });
-            // Salva no LocalStorage (opcional, para acesso fácil via JS)
-            localStorage.setItem('token', access_token);
+            await api.post('/auth/login', user);
+            // Token is now handled via HttpOnly Cookie set by backend logic.
 
             router.push('/dashboard');
         } catch (err: any) {

@@ -1,5 +1,4 @@
 import axios from 'axios';
-import Cookies from 'js-cookie';
 
 console.log('API Base URL:', process.env.NEXT_PUBLIC_API_URL);
 
@@ -12,12 +11,9 @@ const api = axios.create({
 
 api.interceptors.request.use(
     (config) => {
-        if (typeof window !== 'undefined') {
-            const token = Cookies.get('auth_token') || localStorage.getItem('token');
-            if (token) {
-                config.headers.Authorization = `Bearer ${token}`;
-            }
-        }
+        // No manual Authorization header needed (Using HttpOnly Cookies)
+        // Ensure credentials are sent with requests
+        config.withCredentials = true;
         return config;
     },
     (error) => {
@@ -30,9 +26,7 @@ api.interceptors.response.use(
     (error) => {
         if (error.response && error.response.status === 401) {
             if (typeof window !== 'undefined') {
-                Cookies.remove('auth_token');
-                localStorage.removeItem('token');
-                localStorage.removeItem('user');
+                localStorage.removeItem('user'); // Optional: Clear user metadata if stored
                 // Avoid infinite loop if already on login
                 if (!window.location.pathname.includes('/login')) {
                     window.location.href = '/login';
