@@ -9,6 +9,17 @@ import { NovoTurnoDialog } from '@/components/novo-turno-dialog';
 import { toast } from 'sonner';
 import { useEffect } from 'react';
 
+// Types
+interface Turno {
+    id: number;
+    data_referencia: string;
+    hora_inicio: string;
+    hora_fim: string;
+    duracao_minutos: number;
+    tipo?: string;
+    descricao_opcional?: string;
+}
+
 // Fetchers
 const fetchUser = async () => {
     const { data } = await api.get('/usuarios/me');
@@ -16,7 +27,7 @@ const fetchUser = async () => {
 };
 
 const fetchTurnos = async () => {
-    const { data } = await api.get('/turnos/recentes');
+    const { data } = await api.get<Turno[]>('/turnos/recentes');
     return data;
 };
 
@@ -39,8 +50,9 @@ export default function Dashboard() {
     // Error Handling with Toast
     useEffect(() => {
         if (userError) {
-            // @ts-expect-error - Axios Error
-            if (userError.response?.status !== 401) {
+            // Check if it's an Axios error via strict check or cast
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            if ((userError as any).response?.status !== 401) {
                 toast.error("Erro ao carregar perfil. Tente recarregar a página.");
             }
         }
@@ -134,7 +146,7 @@ export default function Dashboard() {
                                             </td>
                                         </tr>
                                     ) : (
-                                        turnos?.map((turno: any) => (
+                                        turnos?.map((turno: Turno) => (
                                             <tr key={turno.id} className="hover:bg-gray-50 transition-colors">
                                                 <td className="px-6 py-4 font-medium text-gray-900">
                                                     {new Date(turno.data_referencia).toLocaleDateString()}

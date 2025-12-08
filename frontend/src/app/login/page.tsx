@@ -25,7 +25,7 @@ export default function LoginPage() {
             // Token is now handled via HttpOnly Cookie set by backend logic.
 
             router.push('/dashboard');
-        } catch (err: any) {
+        } catch (err: unknown) {
             console.error("Login failed", err);
             setError("Falha na autenticação. Tente novamente.");
             setLoading(false);
@@ -34,7 +34,7 @@ export default function LoginPage() {
 
     useEffect(() => {
         // Definir callback global para o Widget
-        (window as any).onTelegramAuth = handleTelegramLogin;
+        (window as unknown as { onTelegramAuth: (user: TelegramUser) => void }).onTelegramAuth = handleTelegramLogin;
 
         // Injetar script do Telegram
         const script = document.createElement('script');
@@ -50,6 +50,7 @@ export default function LoginPage() {
             telegramWrapperRef.current.innerHTML = '';
             telegramWrapperRef.current.appendChild(script);
         }
+        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [router]);
 
     return (

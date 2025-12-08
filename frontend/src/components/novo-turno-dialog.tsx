@@ -77,10 +77,11 @@ export function NovoTurnoDialog() {
             // Atualiza a lista de turnos automaticamente
             queryClient.invalidateQueries({ queryKey: ['turnos'] });
         },
-        onError: (error: any) => {
+        onError: (error: unknown) => {
             console.error("Erro ao criar turno:", error);
             // Melhorar mensagem de erro baseada no status
-            const msg = error.response?.status === 403
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            const msg = (error as any).response?.status === 403
                 ? "Limite do plano grátis atingido."
                 : "Erro ao criar turno. Verifique os dados.";
             alert(msg);
