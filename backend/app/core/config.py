@@ -8,7 +8,7 @@ class Settings(BaseSettings):
     model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8", extra="ignore")
 
     app_name: str = "Gestão de Turnos"
-    timezone: str = Field(default="America/Sao_Paulo", validation_alias="APP_TIMEZONE")
+    timezone: str = Field(validation_alias="APP_TIMEZONE")
 
     # DB
     database_url: Optional[str] = None
