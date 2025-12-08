@@ -18,7 +18,7 @@ class SqlAlchemyTurnoRepository(TurnoRepository):
     def __init__(self, session: AsyncSession):
         self.session = session
 
-    def _to_entity(self, model: models.Turno) -> Turno:
+    def _to_entity(self, model: models.TurnoModel) -> Turno:
         """Converte Model SQLAlchemy para Domain Entity."""
         return Turno(
             id=model.id,
@@ -35,6 +35,24 @@ class SqlAlchemyTurnoRepository(TurnoRepository):
             atualizado_em=model.atualizado_em,
         )
 
+    def _to_model(self, entity: Turno) -> models.TurnoModel:
+        """Converte Domain Entity para Model SQLAlchemy (para criação)."""
+        db_turno = models.TurnoModel(
+            telegram_user_id=entity.telegram_user_id,
+            data_referencia=entity.data_referencia,
+            hora_inicio=entity.hora_inicio,
+            hora_fim=entity.hora_fim,
+            duracao_minutos=entity.duracao_minutos,
+            tipo_turno_id=entity.tipo_id,
+            tipo_livre=entity.tipo if not entity.tipo_id else None,
+            descricao_opcional=entity.descricao_opcional,
+        )
+        
+        if entity.event_uid:
+            db_turno.integracao = models.IntegracaoCalendario(event_uid=entity.event_uid)
+
+        return db_turno
+
     async def buscar_tipo_por_nome(self, nome: str) -> Optional[TipoTurno]:
         stmt = select(models.TipoTurno).where(models.TipoTurno.nome.ilike(nome))
         result = await self.session.scalar(stmt)
@@ -43,30 +61,8 @@ class SqlAlchemyTurnoRepository(TurnoRepository):
         return None
 
     async def criar(self, turno: Turno) -> Turno:
-        # Repositório burro: Apenas persiste o que recebe.
-        # A lógica de decidir se usa tipo_id ou tipo_livre já foi feita no UseCase.
+        db_turno = self._to_model(turno)
         
-        tipo_id_val = turno.tipo_id
-        tipo_livre_val = None
-        
-        if not tipo_id_val and turno.tipo:
-            # Se não tem ID mas tem texto, salva como livre
-            tipo_livre_val = turno.tipo
-
-        db_turno = models.Turno(
-            telegram_user_id=turno.telegram_user_id,
-            data_referencia=turno.data_referencia,
-            hora_inicio=turno.hora_inicio,
-            hora_fim=turno.hora_fim,
-            duracao_minutos=turno.duracao_minutos,
-            tipo_turno_id=tipo_id_val,
-            tipo_livre=tipo_livre_val,
-            descricao_opcional=turno.descricao_opcional,
-        )
-        
-        if turno.event_uid:
-            db_turno.integracao = models.IntegracaoCalendario(event_uid=turno.event_uid)
-
         self.session.add(db_turno)
         # Flush para gerar ID
         await self.session.flush()
@@ -76,6 +72,12 @@ class SqlAlchemyTurnoRepository(TurnoRepository):
         await self.session.refresh(db_turno)
         
         # Construir entidade manualmente para evitar lazy load trigger em db_turno.tipo
+        # E também porque _to_entity faz queries lazy se não estiver carregado
+        
+        # Mas para garantir consistência, vamos usar o que foi persistido:
+        # Porem, db_turno.tipo pode não estar carregado.
+        # Simplificação: retorne uma Entity baseada no que inserimos + ID.
+        
         return Turno(
             id=db_turno.id,
             telegram_user_id=db_turno.telegram_user_id,
@@ -83,17 +85,18 @@ class SqlAlchemyTurnoRepository(TurnoRepository):
             hora_inicio=db_turno.hora_inicio,
             hora_fim=db_turno.hora_fim,
             duracao_minutos=db_turno.duracao_minutos,
-            tipo=turno.tipo, # Usa o que foi passado e persistido (sem lazy load agora)
+            tipo=turno.tipo, 
+            tipo_id=db_turno.tipo_turno_id,
             descricao_opcional=db_turno.descricao_opcional,
-            event_uid=None, # New turn has no event_uid yet until updated
+            event_uid=turno.event_uid, 
             criado_em=db_turno.criado_em,
             atualizado_em=db_turno.atualizado_em,
         )
 
     async def buscar_por_id(self, turno_id: int, telegram_user_id: int) -> Optional[Turno]:
-        stmt = select(models.Turno).options(selectinload(models.Turno.tipo)).options(selectinload(models.Turno.integracao)).where(
-            models.Turno.id == turno_id,
-            models.Turno.telegram_user_id == telegram_user_id
+        stmt = select(models.TurnoModel).options(selectinload(models.TurnoModel.tipo)).options(selectinload(models.TurnoModel.integracao)).where(
+            models.TurnoModel.id == turno_id,
+            models.TurnoModel.telegram_user_id == telegram_user_id
         )
         result = await self.session.scalar(stmt)
         if not result:
@@ -107,13 +110,13 @@ class SqlAlchemyTurnoRepository(TurnoRepository):
         fim: date,
     ) -> List[Turno]:
         stmt = (
-            select(models.Turno)
-            .options(selectinload(models.Turno.tipo))
-            .options(selectinload(models.Turno.integracao))
-            .where(models.Turno.telegram_user_id == telegram_user_id)
-            .where(models.Turno.data_referencia >= inicio)
-            .where(models.Turno.data_referencia <= fim)
-            .order_by(models.Turno.data_referencia, models.Turno.hora_inicio)
+            select(models.TurnoModel)
+            .options(selectinload(models.TurnoModel.tipo))
+            .options(selectinload(models.TurnoModel.integracao))
+            .where(models.TurnoModel.telegram_user_id == telegram_user_id)
+            .where(models.TurnoModel.data_referencia >= inicio)
+            .where(models.TurnoModel.data_referencia <= fim)
+            .order_by(models.TurnoModel.data_referencia, models.TurnoModel.hora_inicio)
         )
         result = await self.session.scalars(stmt)
         return [self._to_entity(t) for t in result.all()]
@@ -124,20 +127,20 @@ class SqlAlchemyTurnoRepository(TurnoRepository):
         limit: int = 5,
     ) -> List[Turno]:
         stmt = (
-            select(models.Turno)
-            .options(selectinload(models.Turno.tipo))
-            .options(selectinload(models.Turno.integracao))
-            .where(models.Turno.telegram_user_id == telegram_user_id)
-            .order_by(models.Turno.criado_em.desc())
+            select(models.TurnoModel)
+            .options(selectinload(models.TurnoModel.tipo))
+            .options(selectinload(models.TurnoModel.integracao))
+            .where(models.TurnoModel.telegram_user_id == telegram_user_id)
+            .order_by(models.TurnoModel.criado_em.desc())
             .limit(limit)
         )
         result = await self.session.scalars(stmt)
         return [self._to_entity(t) for t in result.all()]
 
     async def deletar(self, turno_id: int, telegram_user_id: int) -> bool:
-        stmt = select(models.Turno).where(
-            models.Turno.id == turno_id,
-            models.Turno.telegram_user_id == telegram_user_id
+        stmt = select(models.TurnoModel).where(
+            models.TurnoModel.id == turno_id,
+            models.TurnoModel.telegram_user_id == telegram_user_id
         )
         turno = await self.session.scalar(stmt)
         if not turno:
@@ -150,9 +153,9 @@ class SqlAlchemyTurnoRepository(TurnoRepository):
         return True
 
     async def atualizar(self, turno: Turno) -> Turno:
-        stmt = select(models.Turno).options(selectinload(models.Turno.tipo)).options(selectinload(models.Turno.integracao)).where(
-            models.Turno.id == turno.id,
-            models.Turno.telegram_user_id == turno.telegram_user_id
+        stmt = select(models.TurnoModel).options(selectinload(models.TurnoModel.tipo)).options(selectinload(models.TurnoModel.integracao)).where(
+            models.TurnoModel.id == turno.id,
+            models.TurnoModel.telegram_user_id == turno.telegram_user_id
         )
         db_turno = await self.session.scalar(stmt)
         if not db_turno:
@@ -185,9 +188,10 @@ class SqlAlchemyTurnoRepository(TurnoRepository):
     ) -> int:
         stmt = (
             select(func.count())
-            .select_from(models.Turno)
-            .where(models.Turno.telegram_user_id == telegram_user_id)
-            .where(models.Turno.data_referencia >= inicio)
-            .where(models.Turno.data_referencia <= fim)
+            .select_from(models.TurnoModel)
+            .where(models.TurnoModel.telegram_user_id == telegram_user_id)
+            .where(models.TurnoModel.data_referencia >= inicio)
+            .where(models.TurnoModel.data_referencia <= fim)
         )
         return await self.session.scalar(stmt) or 0
+

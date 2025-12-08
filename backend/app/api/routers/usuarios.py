@@ -67,10 +67,10 @@ async def get_usuario(
 
     # Precisamos do ID interno do usuário (FK na tabela Turno é owner_id)
     # CORREÇÃO: O modelo Turno usa telegram_user_id direto, não FK para tabela usuario
-    count_stmt = select(func.count()).select_from(models.Turno).where(
-        models.Turno.telegram_user_id == telegram_user_id,
-        models.Turno.data_referencia >= start_date,
-        models.Turno.data_referencia < end_date
+    count_stmt = select(func.count()).select_from(models.TurnoModel).where(
+        models.TurnoModel.telegram_user_id == telegram_user_id,
+        models.TurnoModel.data_referencia >= start_date,
+        models.TurnoModel.data_referencia < end_date
     )
     count_result = await db.execute(count_stmt)
     turnos_mes = count_result.scalar() or 0

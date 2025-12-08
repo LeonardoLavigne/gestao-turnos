@@ -22,10 +22,10 @@ class TipoTurno(Base):
     descricao: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
     cor_calendario: Mapped[Optional[str]] = mapped_column(String(20), nullable=True)
 
-    turnos: Mapped[list["Turno"]] = relationship("Turno", back_populates="tipo")
+    turnos: Mapped[list["TurnoModel"]] = relationship("TurnoModel", back_populates="tipo")
 
 
-class Turno(Base):
+class TurnoModel(Base):
     __tablename__ = "turnos"
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
@@ -100,8 +100,8 @@ class IntegracaoCalendario(Base):
         nullable=False,
     )
 
-    turno: Mapped[Turno] = relationship(
-        "Turno",
+    turno: Mapped[TurnoModel] = relationship(
+        "TurnoModel",
         back_populates="integracao",
     )
 
