@@ -2,7 +2,6 @@
 
 import { useRouter } from 'next/navigation';
 import api from '@/lib/api';
-import Cookies from 'js-cookie';
 import { LogOut, Loader2 } from 'lucide-react';
 import { useQuery } from '@tanstack/react-query';
 import { NovoTurnoDialog } from '@/components/novo-turno-dialog';
@@ -62,7 +61,8 @@ export default function Dashboard() {
     }, [userError, turnosError]);
 
     const handleLogout = () => {
-        Cookies.remove('auth_token');
+        // HttpOnly cookies cannot be removed by client-side JS.
+        // TODO: Call backend /auth/logout to clear cookie.
         localStorage.removeItem('token');
         localStorage.removeItem('user');
         router.push('/login');
