@@ -29,6 +29,8 @@ help: ## Mostrar ajuda
 	@echo "Testes:"
 	@echo "  make test-backend       - Rodar testes do backend"
 	@echo "  make test-bot           - Rodar testes do bot"
+	@echo "  make test-backend-cov   - Rodar testes do backend com cobertura"
+	@echo "  make test-bot-cov       - Rodar testes do bot com cobertura"
 	@echo ""
 	@echo "ℹ️  Usando USER_ID=$(USER_ID) GROUP_ID=$(GROUP_ID)"
 
@@ -87,11 +89,18 @@ alembic-current: ## Ver migration atual
 	docker compose exec backend uv run alembic current
 
 # Testes
+# Testes
 test-backend: ## Rodar testes do backend
 	docker compose exec backend uv run pytest tests/ -v
 
+test-backend-cov: ## Rodar testes do backend com cobertura
+	docker compose exec backend uv run pytest tests/ -v --cov=app --cov-report=term-missing
+
 test-bot: ## Rodar testes do bot
 	docker compose exec bot uv run pytest tests/ -v
+
+test-bot-cov: ## Rodar testes do bot com cobertura
+	docker compose exec bot uv run pytest tests/ -v --cov=src --cov-report=term-missing
 
 # Atalhos úteis
 rebuild: down build up ## Down + Build + Up
