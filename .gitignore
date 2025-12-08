@@ -81,3 +81,6 @@ dmypy.json
 
 # Análise de codebase (documento local)
 ANALISE_CODEBASE.md
+
+# Security Scanners
+trivy
