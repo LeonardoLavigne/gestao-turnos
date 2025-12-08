@@ -1,9 +1,15 @@
 import axios from 'axios';
 
-console.log('API Base URL:', process.env.NEXT_PUBLIC_API_URL);
+console.log('API Base URL Env:', process.env.NEXT_PUBLIC_API_URL);
+
+// Use absolute URL on server-side, relative URL on client-side (to leverage Next.js rewrites/proxy)
+// This ensures cookies set by the backend are correctly associated with the frontend domain (localhost)
+const baseURL = typeof window === 'undefined'
+    ? (process.env.NEXT_PUBLIC_API_URL || 'http://127.0.0.1:8000')
+    : '';
 
 const api = axios.create({
-    baseURL: process.env.NEXT_PUBLIC_API_URL || 'http://127.0.0.1:8000',
+    baseURL: baseURL,
     headers: {
         'Content-Type': 'application/json',
     },
@@ -12,7 +18,7 @@ const api = axios.create({
 api.interceptors.request.use(
     (config) => {
         // No manual Authorization header needed (Using HttpOnly Cookies)
-        // Ensure credentials are sent with requests
+        // Ensure credentials are sent with requests (cookies)
         config.withCredentials = true;
         return config;
     },

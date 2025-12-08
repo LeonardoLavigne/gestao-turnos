@@ -61,11 +61,11 @@ export function TelegramLoginWidget({ onLoginSuccess }: TelegramLoginWidgetProps
     }, [onLoginSuccess]); // Only recreate effect if onLoginSuccess changes, which it shouldn't for a fixed callback
 
     return (
-        <div className="flex justify-center py-6 min-h-[100px]" ref={telegramWrapperRef}>
+        <div className="flex flex-col items-center justify-center py-6 min-h-[100px]">
             {loading && (
-                <p className="text-sm text-blue-600 animate-pulse">Carregando widget do Telegram...</p>
+                <p className="text-sm text-blue-600 animate-pulse mb-4">Carregando widget do Telegram...</p>
             )}
-            {/* Widget will be injected here */}
+            <div ref={telegramWrapperRef} />
         </div>
     );
 }

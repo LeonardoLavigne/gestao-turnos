@@ -11,6 +11,30 @@ const nextConfig: NextConfig = {
     },
   },
   allowedDevOrigins: allowedOrigins,
+  async rewrites() {
+    return [
+      {
+        source: '/auth/:path*',
+        destination: 'http://backend:8000/auth/:path*',
+      },
+      {
+        source: '/turnos/:path*',
+        destination: 'http://backend:8000/turnos/:path*',
+      },
+      {
+        source: '/usuarios/:path*',
+        destination: 'http://backend:8000/usuarios/:path*',
+      },
+      {
+        source: '/relatorios/:path*',
+        destination: 'http://backend:8000/relatorios/:path*',
+      },
+      {
+        source: '/assinaturas/:path*',
+        destination: 'http://backend:8000/assinaturas/:path*',
+      },
+    ];
+  },
 };
 
 export default nextConfig;
