@@ -5,7 +5,7 @@ import type { NextRequest } from 'next/server'
 const protectedRoutes = ['/dashboard', '/turnos'];
 const publicRoutes = ['/login'];
 
-export default function middleware(request: NextRequest) {
+export default function proxy(request: NextRequest) {
     // Check for the auth_token cookie
     const token = request.cookies.get('auth_token')?.value;
     const { pathname } = request.nextUrl;
