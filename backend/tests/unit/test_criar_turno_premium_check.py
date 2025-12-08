@@ -6,6 +6,9 @@ from app.domain.entities.assinatura import Assinatura, AssinaturaStatus, PlanoTy
 from app.domain.uow import AbstractUnitOfWork
 from datetime import date, time
 
+from app.domain.ports.caldav_sync_port import CalDavSyncTaskPort
+from app.application.dtos.caldav_sync_dto import SyncTurnoCalDavCommand
+
 # Mock UoW Helper
 class MockUoW(AbstractUnitOfWork):
     def __init__(self, turno_repo, assinatura_repo):
@@ -26,7 +29,13 @@ class MockUoW(AbstractUnitOfWork):
 def mock_repo():
     repo = MagicMock()
     repo.contar_por_periodo = AsyncMock(return_value=0)
-    repo.criar = AsyncMock(side_effect=lambda t: t) # Return same turno
+    
+    # Simulate a Turno being returned by the repository after creation
+    def mock_create_turno(turno):
+        turno.id = 1 # Assign a mock ID
+        return turno
+    repo.criar = AsyncMock(side_effect=mock_create_turno) 
+    
     repo.atualizar = AsyncMock(side_effect=lambda t: t)
     repo.buscar_tipo_por_nome = AsyncMock(return_value=None)
     return repo
@@ -43,8 +52,8 @@ async def test_caldav_sync_skipped_for_free_user(mock_repo, mock_assinatura_repo
     mock_calendar_service = MagicMock()
     mock_settings = MagicMock()
     mock_settings.free_tier_max_shifts = 10
-    mock_bg_queue = MagicMock()
-    use_case = CriarTurnoUseCase(uow, mock_calendar_service, mock_settings, mock_bg_queue)
+    mock_caldav_sync_port = MagicMock(spec=CalDavSyncTaskPort) # Usar a nova porta
+    use_case = CriarTurnoUseCase(uow, mock_calendar_service, mock_settings, mock_caldav_sync_port)
     
     # Mock Free Assinatura
     free_assinatura = Assinatura(
@@ -60,7 +69,7 @@ async def test_caldav_sync_skipped_for_free_user(mock_repo, mock_assinatura_repo
     
     # Assert
     # Sync is skipped (Free User)
-    mock_bg_queue.add_task.assert_not_called()
+    mock_caldav_sync_port.add_sync_task.assert_not_called() # Atualizar asserção
     mock_repo.criar.assert_called_once()
 
 
@@ -71,8 +80,8 @@ async def test_caldav_sync_called_for_pro_user(mock_repo, mock_assinatura_repo):
     mock_calendar_service = MagicMock()
     mock_settings = MagicMock()
     mock_settings.free_tier_max_shifts = 10
-    mock_bg_queue = MagicMock()
-    use_case = CriarTurnoUseCase(uow, mock_calendar_service, mock_settings, mock_bg_queue)
+    mock_caldav_sync_port = MagicMock(spec=CalDavSyncTaskPort) # Usar a nova porta
+    use_case = CriarTurnoUseCase(uow, mock_calendar_service, mock_settings, mock_caldav_sync_port)
     
      # Mock Pro Assinatura
     pro_assinatura = Assinatura(
@@ -88,5 +97,7 @@ async def test_caldav_sync_called_for_pro_user(mock_repo, mock_assinatura_repo):
     
     # Assert
     # Sync is called (Pro User) via BackgroundQueue
-    mock_bg_queue.add_task.assert_called_once()
+    mock_caldav_sync_port.add_sync_task.assert_called_once_with(
+        SyncTurnoCalDavCommand(turno_id=1)
+    ) # Atualizar asserção
     mock_repo.criar.assert_called_once()

@@ -88,15 +88,26 @@ def get_uow(db: AsyncSession = Depends(get_db)) -> SqlAlchemyUnitOfWork:
 from app.infrastructure.background_adapter import FastAPIBackgroundTaskQueue
 from fastapi import BackgroundTasks
 
+# Ports and Adapters
+from app.domain.ports.caldav_sync_port import CalDavSyncTaskPort
+from app.infrastructure.services.caldav_sync_adapter import CalDavSyncTaskAdapter
+
+
 # Use Case Factories
-def get_criar_turno_use_case(
+def get_caldav_sync_task_port(
     background_tasks: BackgroundTasks,
+) -> CalDavSyncTaskPort:
+    bg_queue = FastAPIBackgroundTaskQueue(background_tasks)
+    return CalDavSyncTaskAdapter(bg_queue)
+
+
+def get_criar_turno_use_case(
     uow: AbstractUnitOfWork = Depends(get_uow),
     calendar_service: CalendarService = Depends(get_calendar_service),
     settings: Settings = Depends(get_settings),
+    caldav_sync_task_port: CalDavSyncTaskPort = Depends(get_caldav_sync_task_port),
 ) -> CriarTurnoUseCase:
-    bg_queue = FastAPIBackgroundTaskQueue(background_tasks)
-    return CriarTurnoUseCase(uow, calendar_service, settings, bg_queue)
+    return CriarTurnoUseCase(uow, calendar_service, settings, caldav_sync_task_port)
 
 def get_listar_turnos_periodo_use_case(
     turno_repo: SqlAlchemyTurnoRepository = Depends(get_turno_repo),

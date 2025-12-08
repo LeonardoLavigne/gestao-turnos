@@ -1,29 +1,19 @@
 'use client';
 
-import { useEffect, useRef, useState } from 'react';
+import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import api from '@/lib/api';
-
-interface TelegramUser {
-    id: number;
-    first_name: string;
-    username: string;
-    photo_url?: string;
-    auth_date: number;
-    hash: string;
-}
+import { TelegramLoginWidget } from '@/components/auth/TelegramLoginWidget'; // Importar o novo componente
 
 export default function LoginPage() {
     const router = useRouter();
-    const telegramWrapperRef = useRef<HTMLDivElement>(null);
     const [error, setError] = useState<string | null>(null);
-    const [loading, setLoading] = useState(false);
+    const [loading, setLoading] = useState(false); // Manter o loading para o estado de login pós-widget
 
-    const handleTelegramLogin = async (user: TelegramUser) => {
+    const handleTelegramLogin = async (user: { id: number; first_name: string; username: string; photo_url?: string; auth_date: number; hash: string; }) => { // Definir o tipo diretamente aqui
+        setLoading(true);
         try {
             await api.post('/auth/login', user);
-            // Token is now handled via HttpOnly Cookie set by backend logic.
-
             router.push('/dashboard');
         } catch (err: unknown) {
             console.error("Login failed", err);
@@ -31,27 +21,6 @@ export default function LoginPage() {
             setLoading(false);
         }
     };
-
-    useEffect(() => {
-        // Definir callback global para o Widget
-        (window as unknown as { onTelegramAuth: (user: TelegramUser) => void }).onTelegramAuth = handleTelegramLogin;
-
-        // Injetar script do Telegram
-        const script = document.createElement('script');
-        script.src = 'https://telegram.org/js/telegram-widget.js?22';
-        script.setAttribute('data-telegram-login', process.env.NEXT_PUBLIC_BOT_USERNAME || '');
-        script.setAttribute('data-size', 'large');
-        script.setAttribute('data-radius', '10');
-        script.setAttribute('data-onauth', 'onTelegramAuth(user)');
-        script.setAttribute('data-request-access', 'write');
-        script.async = true;
-
-        if (telegramWrapperRef.current) {
-            telegramWrapperRef.current.innerHTML = '';
-            telegramWrapperRef.current.appendChild(script);
-        }
-        // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [router]);
 
     return (
         <div className="flex min-h-screen flex-col items-center justify-center bg-gray-50 text-black">
@@ -65,9 +34,7 @@ export default function LoginPage() {
                     </p>
                 </div>
 
-                <div className="flex justify-center py-6 min-h-[100px]" ref={telegramWrapperRef}>
-                    {/* Widget inyectado aqui */}
-                </div>
+                <TelegramLoginWidget onLoginSuccess={handleTelegramLogin} />
 
                 {loading && (
                     <p className="text-sm text-blue-600 animate-pulse">Autenticando...</p>

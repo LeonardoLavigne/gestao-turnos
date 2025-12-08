@@ -13,8 +13,8 @@ from app.domain.services.calendar_service import CalendarService
 logger = logging.getLogger(__name__)
 from app.domain.exceptions.freemium_exception import LimiteTurnosExcedidoException
 from app.core.config import Settings
-from app.domain.ports.background import BackgroundTaskQueue
-from app.infrastructure.tasks.caldav import sync_turn_caldav_background
+from app.domain.ports.caldav_sync_port import CalDavSyncTaskPort
+from app.application.dtos.caldav_sync_dto import SyncTurnoCalDavCommand
 
 
 class CriarTurnoUseCase:
@@ -30,12 +30,12 @@ class CriarTurnoUseCase:
         uow: AbstractUnitOfWork,
         calendar_service: CalendarService,
         settings: Settings,
-        bg_queue: BackgroundTaskQueue,
+        caldav_sync_task_port: CalDavSyncTaskPort,
     ):
         self.uow = uow
         self.calendar_service = calendar_service
         self.settings = settings
-        self.bg_queue = bg_queue
+        self.caldav_sync_task_port = caldav_sync_task_port
 
     async def execute(
         self,
@@ -89,6 +89,6 @@ class CriarTurnoUseCase:
 
             # 4. CalDAV Integration (Background)
             if assinatura and not assinatura.is_free:
-                self.bg_queue.add_task(sync_turn_caldav_background, saved_turno.id)
+                self.caldav_sync_task_port.add_sync_task(SyncTurnoCalDavCommand(turno_id=saved_turno.id))
             
             return saved_turno
