@@ -7,6 +7,7 @@ import { useQuery } from '@tanstack/react-query';
 import { NovoTurnoDialog } from '@/components/novo-turno-dialog';
 import { toast } from 'sonner';
 import { useEffect } from 'react';
+import { AxiosError } from 'axios';
 
 // Types
 interface Turno {
@@ -49,9 +50,8 @@ export default function Dashboard() {
     // Error Handling with Toast
     useEffect(() => {
         if (userError) {
-            // Check if it's an Axios error via strict check or cast
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            if ((userError as any).response?.status !== 401) {
+            const err = userError as AxiosError;
+            if (err.response?.status !== 401) {
                 toast.error("Erro ao carregar perfil. Tente recarregar a página.");
             }
         }
